@@ -49,7 +49,7 @@ router.get('/positions/:id.csv', async (req, res) => {
       csvField(c.asset_tag),
       csvField(c.notes),
       csvField(c.status),
-      csvField(c.item_status || 'IN STOCK'),
+      csvField(c.item_status || 'IN USE'),
       csvField(c.updated_at),
     ]);
 
@@ -109,7 +109,7 @@ router.get('/positions.csv', async (req, res) => {
       csvField(c.asset_tag),
       csvField(c.notes),
       csvField(c.status),
-      csvField(c.item_status || 'IN STOCK'),
+      csvField(c.item_status || 'IN USE'),
       csvField(c.updated_at),
     ]);
 
