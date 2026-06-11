@@ -59,8 +59,8 @@ router.post('/', async (req, res) => {
 
     for (const comp of tc.rows) {
       await db.query(
-        `INSERT INTO position_components (position_id, component_name, sort_order, status)
-         VALUES ($1, $2, $3, 'missing')`,
+        `INSERT INTO position_components (position_id, component_name, sort_order, status, item_status)
+         VALUES ($1, $2, $3, 'missing', 'IN STOCK')`,
         [positionId, comp.component_name, comp.sort_order]
       );
     }
@@ -215,8 +215,8 @@ router.patch('/:id/template', async (req, res) => {
       if (!existingMap.has(comp.component_name)) {
         // New component — add it
         await db.query(
-          `INSERT INTO position_components (position_id, component_name, sort_order, status)
-           VALUES ($1, $2, $3, 'missing')`,
+          `INSERT INTO position_components (position_id, component_name, sort_order, status, item_status)
+           VALUES ($1, $2, $3, 'missing', 'IN STOCK')`,
           [req.params.id, comp.component_name, comp.sort_order]
         );
       } else {
@@ -299,8 +299,8 @@ router.post('/:id/components', async (req, res) => {
       [req.params.id]
     );
     const result = await db.query(
-      `INSERT INTO position_components (position_id, component_name, sort_order, status, is_extra_component)
-       VALUES ($1, $2, $3, 'missing', TRUE)
+      `INSERT INTO position_components (position_id, component_name, sort_order, status, is_extra_component, item_status)
+       VALUES ($1, $2, $3, 'missing', TRUE, 'IN STOCK')
        RETURNING *`,
       [req.params.id, component_name.trim(), maxOrder.rows[0].next_order]
     );
@@ -316,7 +316,7 @@ router.post('/:id/components', async (req, res) => {
 
 // PUT /api/position-components/:id — update a single component's data
 router.put('/components/:id', async (req, res) => {
-  const { component_name, model_id, custom_model, serial_number, asset_tag, notes, updated_by } = req.body;
+  const { component_name, model_id, custom_model, serial_number, asset_tag, notes, updated_by, item_status } = req.body;
 
   // Build dynamic update
   const fields = {};
@@ -327,6 +327,14 @@ router.put('/components/:id', async (req, res) => {
   if (asset_tag !== undefined) fields.asset_tag = asset_tag || null;
   if (notes !== undefined) fields.notes = notes || null;
   if (updated_by !== undefined) fields.updated_by = updated_by;
+  if (item_status !== undefined) {
+    // Validate allowed values
+    const allowed = ['IN USE', 'IN STOCK', 'FAULTY'];
+    if (!allowed.includes(item_status)) {
+      return res.status(400).json({ error: 'item_status must be one of: IN USE, IN STOCK, FAULTY' });
+    }
+    fields.item_status = item_status;
+  }
 
   // Always recompute status from latest serial + asset
   // We need the existing values if not being changed
@@ -436,8 +444,8 @@ router.post('/:id/init-from-template', async (req, res) => {
 
       for (const comp of tc.rows) {
         await db.query(
-          `INSERT INTO position_components (position_id, component_name, sort_order, status)
-           VALUES ($1, $2, $3, 'missing')`,
+          `INSERT INTO position_components (position_id, component_name, sort_order, status, item_status)
+           VALUES ($1, $2, $3, 'missing', 'IN STOCK')`,
           [positionId, comp.component_name, comp.sort_order]
         );
       }

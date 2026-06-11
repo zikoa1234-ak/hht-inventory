@@ -63,6 +63,12 @@ const AppState = {
     return `<span class="status-badge status-${status}">${labels[status] || status}</span>`;
   },
 
+  getItemStatusBadge(itemStatus) {
+    const val = itemStatus || 'IN STOCK';
+    const cssClass = val.toLowerCase().replace(/ /g, '-');
+    return `<span class="item-status-badge item-status-${cssClass}">${val}</span>`;
+  },
+
   formatDate(d) {
     if (!d) return '';
     const dt = new Date(d);

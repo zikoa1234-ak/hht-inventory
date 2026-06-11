@@ -203,6 +203,7 @@
                 <th>Serial Number</th>
                 <th>Asset Tag</th>
                 <th>Notes</th>
+                <th>Item Status</th>
                 <th>Status</th>
                 <th>Updated</th>
                 <th>Actions</th>
@@ -248,6 +249,15 @@
               <label class="form-label">Asset Tag</label>
               <input type="text" id="editAssetTag" class="form-control input-scan" placeholder="Scan or type asset tag...">
             </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Item Status</label>
+            <select id="editItemStatus" class="form-control">
+              <option value="IN STOCK">IN STOCK</option>
+              <option value="IN USE">IN USE</option>
+              <option value="FAULTY">FAULTY</option>
+            </select>
           </div>
 
           <div class="form-group">

@@ -32,6 +32,7 @@ const PositionsScreen = {
     this.sumComplete = document.getElementById('sumComplete');
     this.sumPartial = document.getElementById('sumPartial');
     this.sumMissing = document.getElementById('sumMissing');
+    this.editItemStatus = document.getElementById('editItemStatus');
 
     // Guard against missing DOM elements
     if (!this.scanPanel || !this.componentTableBody) {
@@ -160,6 +161,7 @@ const PositionsScreen = {
                     custom_model: '',
                     notes: '',
                     is_extra_component: false,
+                    item_status: 'IN STOCK',
                   }));
                   data.components = AppState.currentComponents;
                   data.template_name = tpl.name;
@@ -266,7 +268,7 @@ const PositionsScreen = {
       // Show helpful empty state with instructions
       tbody.innerHTML = `
         <tr>
-          <td colspan="9" class="empty-state">
+          <td colspan="10" class="empty-state">
             <p><strong>No components loaded for this position.</strong></p>
             <p class="text-secondary">Possible reasons:</p>
             <ul style="text-align:left;display:inline-block;margin:4px 0;font-size:12px;color:var(--text-secondary);">
@@ -309,6 +311,7 @@ const PositionsScreen = {
         <td class="mono">${esc(serialNum)}</td>
         <td class="mono">${esc(assetTag)}</td>
         <td>${esc(notes)}</td>
+        <td>${AppState.getItemStatusBadge(comp.item_status)}</td>
         <td>${AppState.getStatusBadge(comp.status || 'missing')}</td>
         <td class="text-secondary text-sm">${AppState.formatDate(comp.updated_at)}</td>
         <td>
@@ -416,7 +419,7 @@ const PositionsScreen = {
     }
     const tbody = this.componentTableBody;
     if (tbody) {
-      tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Loading component data...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" class="empty-state">Loading component data...</td></tr>';
     }
     if (this.sumComplete) this.sumComplete.textContent = '-';
     if (this.sumPartial) this.sumPartial.textContent = '-';
@@ -429,7 +432,7 @@ const PositionsScreen = {
     }
     const tbody = this.componentTableBody;
     if (tbody) {
-      tbody.innerHTML = `<tr><td colspan="9" class="empty-state">${esc(message)}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10" class="empty-state">${esc(message)}</td></tr>`;
     }
     if (this.sumComplete) this.sumComplete.textContent = '0';
     if (this.sumPartial) this.sumPartial.textContent = '0';
@@ -474,6 +477,7 @@ const PositionsScreen = {
     if (this.editSerialNumber) this.editSerialNumber.value = comp.serial_number || '';
     if (this.editAssetTag) this.editAssetTag.value = comp.asset_tag || '';
     if (this.editNotes) this.editNotes.value = comp.notes || '';
+    if (this.editItemStatus) this.editItemStatus.value = comp.item_status || 'IN STOCK';
     if (this.saveStatus) {
       this.saveStatus.textContent = '';
       this.saveStatus.className = 'save-status';
@@ -510,6 +514,7 @@ const PositionsScreen = {
     if (this.editNotes) this.editNotes.value = '';
     if (this.editCustomModel) this.editCustomModel.value = '';
     if (this.editModelSelect) this.editModelSelect.value = '';
+    if (this.editItemStatus) this.editItemStatus.value = 'IN STOCK';
     if (this.saveStatus) {
       this.saveStatus.textContent = '';
       this.saveStatus.className = 'save-status';
@@ -526,6 +531,7 @@ const PositionsScreen = {
       serial_number: (this.editSerialNumber ? this.editSerialNumber.value.trim() : '') || null,
       asset_tag: (this.editAssetTag ? this.editAssetTag.value.trim() : '') || null,
       notes: (this.editNotes ? this.editNotes.value.trim() : '') || null,
+      item_status: this.editItemStatus ? this.editItemStatus.value : 'IN STOCK',
     };
 
     const modelId = this.editModelSelect ? this.editModelSelect.value : '';
