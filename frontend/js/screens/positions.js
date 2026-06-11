@@ -161,7 +161,7 @@ const PositionsScreen = {
                     custom_model: '',
                     notes: '',
                     is_extra_component: false,
-                    item_status: 'IN STOCK',
+                    item_status: 'IN USE',
                   }));
                   data.components = AppState.currentComponents;
                   data.template_name = tpl.name;
@@ -477,7 +477,7 @@ const PositionsScreen = {
     if (this.editSerialNumber) this.editSerialNumber.value = comp.serial_number || '';
     if (this.editAssetTag) this.editAssetTag.value = comp.asset_tag || '';
     if (this.editNotes) this.editNotes.value = comp.notes || '';
-    if (this.editItemStatus) this.editItemStatus.value = comp.item_status || 'IN STOCK';
+    if (this.editItemStatus) this.editItemStatus.value = comp.item_status || 'IN USE';
     if (this.saveStatus) {
       this.saveStatus.textContent = '';
       this.saveStatus.className = 'save-status';
@@ -514,7 +514,7 @@ const PositionsScreen = {
     if (this.editNotes) this.editNotes.value = '';
     if (this.editCustomModel) this.editCustomModel.value = '';
     if (this.editModelSelect) this.editModelSelect.value = '';
-    if (this.editItemStatus) this.editItemStatus.value = 'IN STOCK';
+    if (this.editItemStatus) this.editItemStatus.value = 'IN USE';
     if (this.saveStatus) {
       this.saveStatus.textContent = '';
       this.saveStatus.className = 'save-status';
@@ -531,7 +531,7 @@ const PositionsScreen = {
       serial_number: (this.editSerialNumber ? this.editSerialNumber.value.trim() : '') || null,
       asset_tag: (this.editAssetTag ? this.editAssetTag.value.trim() : '') || null,
       notes: (this.editNotes ? this.editNotes.value.trim() : '') || null,
-      item_status: this.editItemStatus ? this.editItemStatus.value : 'IN STOCK',
+      item_status: this.editItemStatus ? this.editItemStatus.value : 'IN USE',
     };
 
     const modelId = this.editModelSelect ? this.editModelSelect.value : '';

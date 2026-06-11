@@ -60,7 +60,7 @@ router.post('/', async (req, res) => {
     for (const comp of tc.rows) {
       await db.query(
         `INSERT INTO position_components (position_id, component_name, sort_order, status, item_status)
-         VALUES ($1, $2, $3, 'missing', 'IN STOCK')`,
+         VALUES ($1, $2, $3, 'missing', 'IN USE')`,
         [positionId, comp.component_name, comp.sort_order]
       );
     }
@@ -216,7 +216,7 @@ router.patch('/:id/template', async (req, res) => {
         // New component — add it
         await db.query(
           `INSERT INTO position_components (position_id, component_name, sort_order, status, item_status)
-           VALUES ($1, $2, $3, 'missing', 'IN STOCK')`,
+           VALUES ($1, $2, $3, 'missing', 'IN USE')`,
           [req.params.id, comp.component_name, comp.sort_order]
         );
       } else {
@@ -300,7 +300,7 @@ router.post('/:id/components', async (req, res) => {
     );
     const result = await db.query(
       `INSERT INTO position_components (position_id, component_name, sort_order, status, is_extra_component, item_status)
-       VALUES ($1, $2, $3, 'missing', TRUE, 'IN STOCK')
+       VALUES ($1, $2, $3, 'missing', TRUE, 'IN USE')
        RETURNING *`,
       [req.params.id, component_name.trim(), maxOrder.rows[0].next_order]
     );
@@ -445,7 +445,7 @@ router.post('/:id/init-from-template', async (req, res) => {
       for (const comp of tc.rows) {
         await db.query(
           `INSERT INTO position_components (position_id, component_name, sort_order, status, item_status)
-           VALUES ($1, $2, $3, 'missing', 'IN STOCK')`,
+           VALUES ($1, $2, $3, 'missing', 'IN USE')`,
           [positionId, comp.component_name, comp.sort_order]
         );
       }

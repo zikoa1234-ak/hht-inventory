@@ -64,7 +64,7 @@ const AppState = {
   },
 
   getItemStatusBadge(itemStatus) {
-    const val = itemStatus || 'IN STOCK';
+    const val = itemStatus || 'IN USE';
     const cssClass = val.toLowerCase().replace(/ /g, '-');
     return `<span class="item-status-badge item-status-${cssClass}">${val}</span>`;
   },
