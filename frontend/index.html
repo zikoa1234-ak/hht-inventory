@@ -60,7 +60,17 @@
           </div>
         </div>
 
-        <!-- Quick export -->
+        <!-- Template Components Preview -->
+      <div class="card" id="templateComponentsCard">
+        <div class="card-header">
+          <h3>Template Components</h3>
+        </div>
+        <div class="card-body" id="templateComponentsPreview">
+          <p class="text-secondary text-sm">Select a template to see its components</p>
+        </div>
+      </div>
+
+      <!-- Quick export -->
         <div class="card">
           <div class="card-header">
             <h3>Export</h3>
@@ -255,6 +265,34 @@
       </div>
     </section>
 
+    <!-- ====== SETTINGS MODAL ====== -->
+    <div id="settingsOverlay" class="modal-overlay hidden">
+      <div class="modal-panel">
+        <div class="modal-header">
+          <h3>Settings</h3>
+          <button class="btn btn--sm btn--outline modal-close-btn settings-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Template-to-Prefix Mapping</label>
+            <p class="text-secondary text-sm mb-4">This maps template names to prefix codes from the host file.</p>
+            <div id="settingsPrefixList"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Host Positions</label>
+            <p class="text-secondary text-sm">Total: <span id="settingsHostCount">0</span> positions loaded from TXT file.</p>
+          </div>
+          <div class="form-group">
+            <label class="form-label">API Base URL</label>
+            <input type="text" id="settingsApiBase" class="form-control" placeholder="/" value="">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn--outline settings-close">Close</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ====== CREATE POSITION MODAL ====== -->
     <div id="createPositionOverlay" class="modal-overlay hidden">
       <div class="modal-panel modal-sm">
@@ -327,6 +365,7 @@
 
   <!-- Scripts -->
   <script src="js/api.js"></script>
+  <script src="js/hosts.js"></script>
   <script src="js/state.js"></script>
   <script src="js/screens/templates.js"></script>
   <script src="js/screens/positions.js"></script>
