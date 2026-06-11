@@ -28,7 +28,7 @@ router.get('/positions/:id.csv', async (req, res) => {
 
     const comps = await db.query(
       `SELECT pc.component_name, pc.custom_model, pc.serial_number, pc.asset_tag,
-              pc.notes, pc.status, pc.updated_at, m.name AS model_name
+              pc.notes, pc.status, pc.item_status, pc.updated_at, m.name AS model_name
        FROM position_components pc
        LEFT JOIN models m ON m.id = pc.model_id
        WHERE pc.position_id = $1
