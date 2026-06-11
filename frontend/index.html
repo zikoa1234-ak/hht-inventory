@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>HHT Inventory — Asset Tracking</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- ====== TOP NAV ====== -->
+    <nav id="topNav" class="top-nav">
+      <button class="nav-btn" data-screen="dashboard" title="Dashboard">&#9632;</button>
+      <span class="nav-title">HHT Inventory</span>
+      <button class="nav-btn" data-screen="settings" title="Settings">&#9881;</button>
+    </nav>
+
+    <!-- ====== DASHBOARD ====== -->
+    <section id="screen-dashboard" class="screen active">
+      <div class="dashboard-grid">
+        <!-- Sites -->
+        <div class="card">
+          <div class="card-header">
+            <h3>Sites / Locations</h3>
+            <button class="btn btn--sm btn--primary" id="addSiteBtn">+ Add</button>
+          </div>
+          <div class="card-body">
+            <select id="siteSelect" class="form-control">
+              <option value="">-- Select Site --</option>
+            </select>
+            <div id="siteList" class="compact-list"></div>
+          </div>
+        </div>
+
+        <!-- Templates -->
+        <div class="card">
+          <div class="card-header">
+            <h3>Templates</h3>
+            <button class="btn btn--sm btn--primary" id="manageTemplatesBtn">Manage</button>
+          </div>
+          <div class="card-body">
+            <select id="templateSelect" class="form-control">
+              <option value="">-- Select Template --</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Positions -->
+        <div class="card">
+          <div class="card-header">
+            <h3>Positions</h3>
+            <button class="btn btn--sm btn--primary" id="createPositionBtn">+ Create</button>
+          </div>
+          <div class="card-body">
+            <select id="positionSelect" class="form-control">
+              <option value="">-- Select Position --</option>
+            </select>
+            <button class="btn btn--primary btn--full-width mt-8" id="openPositionBtn" disabled>Open Position</button>
+          </div>
+        </div>
+
+        <!-- Quick export -->
+        <div class="card">
+          <div class="card-header">
+            <h3>Export</h3>
+          </div>
+          <div class="card-body">
+            <button class="btn btn--secondary btn--full-width mb-4" id="exportAllBtn">Export All CSV</button>
+            <button class="btn btn--secondary btn--full-width" id="exportPositionBtn" disabled>Export Selected CSV</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Position list table -->
+      <div class="card mt-16">
+        <div class="card-header">
+          <h3>All Positions</h3>
+        </div>
+        <div class="card-body table-wrap">
+          <table class="data-table" id="positionTable">
+            <thead>
+              <tr>
+                <th>Site</th>
+                <th>Position</th>
+                <th>Template</th>
+                <th>Total</th>
+                <th>Complete</th>
+                <th>Partial</th>
+                <th>Missing</th>
+                <th>Updated</th>
+              </tr>
+            </thead>
+            <tbody id="positionTableBody">
+              <tr><td colspan="8" class="empty-state">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====== TEMPLATE MANAGER ====== -->
+    <section id="screen-templates" class="screen">
+      <div class="screen-back-header">
+        <button class="btn btn--outline btn--sm" data-screen="dashboard">&larr; Back</button>
+        <h2>Template Manager</h2>
+      </div>
+
+      <div class="card mt-8">
+        <div class="card-header">
+          <h3>Templates</h3>
+          <button class="btn btn--sm btn--primary" id="newTemplateBtn">+ New</button>
+        </div>
+        <div class="card-body table-wrap">
+          <table class="data-table" id="templateTable">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Components</th>
+                <th>Updated</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="templateTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Template editor modal -->
+      <div id="templateEditorOverlay" class="modal-overlay hidden">
+        <div class="modal-panel">
+          <div class="modal-header">
+            <h3 id="templateEditorTitle">Edit Template</h3>
+            <button class="btn btn--sm btn--outline modal-close-btn">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label class="form-label">Template Name</label>
+              <input type="text" id="templateNameInput" class="form-control" placeholder="e.g. Checking">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Components</label>
+              <div id="templateComponentsList" class="sortable-list"></div>
+              <div class="input-group mt-4">
+                <input type="text" id="newComponentInput" class="form-control" placeholder="Add component...">
+                <button class="btn btn--primary btn--sm" id="addComponentBtn">Add</button>
+              </div>
+            </div>
+            <input type="hidden" id="editingTemplateId" value="">
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn--outline modal-close-btn">Cancel</button>
+            <button class="btn btn--primary" id="saveTemplateBtn">Save Template</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====== POSITION DETAIL / SCANNING ====== -->
+    <section id="screen-position" class="screen">
+      <div class="screen-back-header">
+        <button class="btn btn--outline btn--sm" data-screen="dashboard">&larr; Back</button>
+        <div>
+          <h2 id="positionDetailTitle">Position</h2>
+          <span id="positionDetailMeta" class="text-secondary text-sm"></span>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn--sm btn--outline" id="changeTemplateBtn">Change Template</button>
+          <button class="btn btn--sm btn--secondary" id="exportPositionDetailBtn">CSV</button>
+        </div>
+      </div>
+
+      <!-- Summary bar -->
+      <div class="summary-bar" id="summaryBar">
+        <span class="summary-item complete">Complete: <b id="sumComplete">0</b></span>
+        <span class="summary-item partial">Partial: <b id="sumPartial">0</b></span>
+        <span class="summary-item missing">Missing: <b id="sumMissing">0</b></span>
+      </div>
+
+      <!-- Component table -->
+      <div class="card mt-8">
+        <div class="card-header">
+          <h3>Components</h3>
+          <button class="btn btn--sm btn--primary" id="addExtraComponentBtn">+ Extra</button>
+        </div>
+        <div class="card-body table-wrap">
+          <table class="data-table" id="componentTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Component</th>
+                <th>Model</th>
+                <th>Serial Number</th>
+                <th>Asset Tag</th>
+                <th>Notes</th>
+                <th>Status</th>
+                <th>Updated</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="componentTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Scanning/editing panel -->
+      <div id="scanPanel" class="scan-panel hidden">
+        <div class="scan-panel-header">
+          <h4 id="scanPanelTitle">Scan / Edit Component</h4>
+          <button class="btn btn--sm btn--outline" id="closeScanPanelBtn">&times;</button>
+        </div>
+        <div class="scan-panel-body">
+          <input type="hidden" id="editComponentId" value="">
+
+          <div class="form-group">
+            <label class="form-label">Component Name</label>
+            <input type="text" id="editCompName" class="form-control">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Model</label>
+            <select id="editModelSelect" class="form-control">
+              <option value="">-- Select Model --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Or type custom model</label>
+            <input type="text" id="editCustomModel" class="form-control" placeholder="Custom model name">
+          </div>
+
+          <div class="two-col">
+            <div class="form-group">
+              <label class="form-label">Serial Number</label>
+              <input type="text" id="editSerialNumber" class="form-control input-scan" placeholder="Scan or type serial..." autofocus>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Asset Tag</label>
+              <input type="text" id="editAssetTag" class="form-control input-scan" placeholder="Scan or type asset tag...">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Notes</label>
+            <textarea id="editNotes" class="form-control" rows="2"></textarea>
+          </div>
+
+          <div class="scan-panel-actions">
+            <button class="btn btn--primary btn--lg" id="saveComponentBtn">Save Component</button>
+            <button class="btn btn--outline" id="clearComponentBtn">Clear Fields</button>
+          </div>
+
+          <div id="saveStatus" class="save-status"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====== CREATE POSITION MODAL ====== -->
+    <div id="createPositionOverlay" class="modal-overlay hidden">
+      <div class="modal-panel modal-sm">
+        <div class="modal-header">
+          <h3>Create Position</h3>
+          <button class="btn btn--sm btn--outline modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Site</label>
+            <select id="createPositionSite" class="form-control"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Template</label>
+            <select id="createPositionTemplate" class="form-control"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Position Name</label>
+            <input type="text" id="createPositionName" class="form-control" placeholder="e.g. Checking-01">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn--outline modal-close-btn">Cancel</button>
+          <button class="btn btn--primary" id="confirmCreatePositionBtn">Create</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== CHANGE TEMPLATE MODAL ====== -->
+    <div id="changeTemplateOverlay" class="modal-overlay hidden">
+      <div class="modal-panel modal-sm">
+        <div class="modal-header">
+          <h3>Change Template</h3>
+          <button class="btn btn--sm btn--outline modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="text-secondary">Safe merge: existing scanned data will be kept. Removed template components become "extra".</p>
+          <div class="form-group">
+            <label class="form-label">New Template</label>
+            <select id="changeTemplateSelect" class="form-control"></select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn--outline modal-close-btn">Cancel</button>
+          <button class="btn btn--primary" id="confirmChangeTemplateBtn">Change Template</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== CONFIRM DIALOG ====== -->
+    <div id="confirmOverlay" class="modal-overlay hidden">
+      <div class="modal-panel modal-sm">
+        <div class="modal-header">
+          <h3 id="confirmTitle">Confirm</h3>
+        </div>
+        <div class="modal-body">
+          <p id="confirmMessage"></p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn--outline" id="confirmNoBtn">Cancel</button>
+          <button class="btn btn--primary" id="confirmYesBtn">Confirm</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== TOAST ====== -->
+    <div id="toastContainer" class="toast-container"></div>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/api.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/screens/templates.js"></script>
+  <script src="js/screens/positions.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

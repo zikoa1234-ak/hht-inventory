@@ -1,0 +1,21 @@
+{
+  "name": "hht-inventory-backend",
+  "version": "1.0.0",
+  "description": "HHT Inventory — Asset tracking backend (Express + PostgreSQL)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "migrate": "psql \"$DATABASE_URL\" -f schema.sql",
+    "seed": "psql \"$DATABASE_URL\" -f seed.sql",
+    "setup": "npm run migrate && npm run seed"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {},
+  "private": true
+}
