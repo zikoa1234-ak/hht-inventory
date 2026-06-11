@@ -406,4 +406,82 @@ router.delete('/components/:id', async (req, res) => {
   }
 });
 
+// POST /api/positions/:id/init-from-template — initialize position_components from template if empty
+router.post('/:id/init-from-template', async (req, res) => {
+  try {
+    const positionId = req.params.id;
+
+    // Get position to find template_id
+    const pos = await db.query(
+      'SELECT id, template_id FROM positions WHERE id = $1',
+      [positionId]
+    );
+    if (pos.rows.length === 0) {
+      return res.status(404).json({ error: 'Position not found' });
+    }
+    const templateId = pos.rows[0].template_id;
+
+    // Check if position already has components
+    const existingCount = await db.query(
+      'SELECT COUNT(*)::int AS count FROM position_components WHERE position_id = $1',
+      [positionId]
+    );
+
+    if (existingCount.rows[0].count === 0) {
+      // Copy template components into position_components
+      const tc = await db.query(
+        'SELECT component_name, sort_order FROM template_components WHERE template_id = $1 ORDER BY sort_order',
+        [templateId]
+      );
+
+      for (const comp of tc.rows) {
+        await db.query(
+          `INSERT INTO position_components (position_id, component_name, sort_order, status)
+           VALUES ($1, $2, $3, 'missing')`,
+          [positionId, comp.component_name, comp.sort_order]
+        );
+      }
+
+      // Log initialization in history
+      for (const comp of tc.rows) {
+        await db.query(
+          `INSERT INTO component_history (component_id, field_name, old_value, new_value, changed_by)
+           VALUES ((SELECT id FROM position_components WHERE position_id = $1 AND component_name = $2), 'created', NULL, 'init', 'system')`,
+          [positionId, comp.component_name]
+        );
+      }
+    }
+
+    // Return full position with components
+    const full = await db.query(
+      `SELECT p.*, s.name AS site_name, pt.name AS template_name
+       FROM positions p
+       JOIN sites s ON s.id = p.site_id
+       JOIN position_templates pt ON pt.id = p.template_id
+       WHERE p.id = $1`,
+      [positionId]
+    );
+    const comps = await db.query(
+      `SELECT pc.*, m.name AS model_name
+       FROM position_components pc
+       LEFT JOIN models m ON m.id = pc.model_id
+       WHERE pc.position_id = $1
+       ORDER BY pc.sort_order`,
+      [positionId]
+    );
+    const session = await db.query(
+      'SELECT * FROM scan_sessions WHERE position_id = $1 AND completed_at IS NULL ORDER BY started_at DESC LIMIT 1',
+      [positionId]
+    );
+    res.json({
+      ...full.rows[0],
+      components: comps.rows,
+      active_session: session.rows[0] || null,
+    });
+  } catch (err) {
+    console.error('POST /positions/:id/init-from-template error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

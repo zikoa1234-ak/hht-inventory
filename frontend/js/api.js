@@ -70,6 +70,9 @@ const api = {
   addExtraComponent(positionId, component_name) {
     return this.request('POST', `/positions/${positionId}/components`, { component_name }).then(r => r.json());
   },
+  initPositionFromTemplate(positionId) {
+    return this.request('POST', `/positions/${positionId}/init-from-template`).then(r => r.json());
+  },
   updateComponent(componentId, data) {
     return this.request('PUT', `/positions/components/${componentId}`, data).then(r => r.json());
   },

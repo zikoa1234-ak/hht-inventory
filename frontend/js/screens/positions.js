@@ -90,7 +90,8 @@ const PositionsScreen = {
     }
 
     // Show screen immediately with loading state — NEVER blank
-    AppHelpers.showScreen('screen-position');
+    // FIX: pass 'position' not 'screen-position' (showScreen prepends 'screen-')
+    AppHelpers.showScreen('position');
     this._renderLoadingState(positionId);
 
     // Close any open scan panel
@@ -119,7 +120,7 @@ const PositionsScreen = {
         }
       }
 
-      this.log('Position data loaded:', data ? data.name : 'null', '| components:', data && data.components ? data.components.length : 0);
+      this.log('Position data loaded:', data ? data.name : 'null', '| template:', data ? data.template_name : 'null', '| components:', data && data.components ? data.components.length : 0);
 
       // Defensive: ensure data has all expected fields
       data = data || {};
@@ -127,6 +128,52 @@ const PositionsScreen = {
       data.site_name = data.site_name || '';
       data.template_name = data.template_name || '';
       data.components = data.components || [];
+
+      // FIX: If position has no components but has a template, initialize from template
+      if (!data.components || data.components.length === 0) {
+        this.log('No components found — attempting to initialize from template');
+        try {
+          const initData = await api.initPositionFromTemplate(positionId);
+          this.log('Init-from-template response:', initData ? initData.name : 'null', '| components:', initData && initData.components ? initData.components.length : 0);
+          if (initData && initData.components && initData.components.length > 0) {
+            data = initData;
+            AppState.currentPosition = initData;
+            AppState.currentComponents = initData.components || [];
+          } else {
+            this.log('Init returned no components — trying template fetch for defaults');
+            // Last resort: create in-memory defaults from the template
+            const tplId = data.template_id || (AppState.positions || []).find(p => p.id === positionId)?.template_id;
+            if (tplId) {
+              try {
+                const tpl = await api.getTemplate(tplId);
+                this.log('Template fetched:', tpl.name, '| components:', tpl.components ? tpl.components.length : 0);
+                if (tpl.components && tpl.components.length > 0) {
+                  AppState.currentComponents = tpl.components.map((c, i) => ({
+                    id: null,
+                    position_id: positionId,
+                    component_name: c.component_name || c.name || c,
+                    sort_order: c.sort_order || (i + 1),
+                    status: 'missing',
+                    serial_number: '',
+                    asset_tag: '',
+                    model_name: '',
+                    custom_model: '',
+                    notes: '',
+                    is_extra_component: false,
+                  }));
+                  data.components = AppState.currentComponents;
+                  data.template_name = tpl.name;
+                  this.log('Created', AppState.currentComponents.length, 'in-memory default components');
+                }
+              } catch (tplErr) {
+                this.log('Template fetch failed:', tplErr.message);
+              }
+            }
+          }
+        } catch (initErr) {
+          this.log('Init-from-template failed:', initErr.message);
+        }
+      }
 
       // Set header
       if (this.positionDetailTitle) {
@@ -148,6 +195,10 @@ const PositionsScreen = {
       this._updateSummary();
 
       this.log('Position screen rendered successfully | components:', AppState.currentComponents.length);
+
+      // FIX: Auto-open scan panel for first missing component
+      this._autoScanFirstMissing();
+
     } catch (err) {
       this.log('CRITICAL error in openPosition:', err.message);
       console.error('[Positions] openPosition error:', err);
@@ -240,15 +291,20 @@ const PositionsScreen = {
       }
 
       const tr = document.createElement('tr');
+      // FIX: Make entire row clickable to open scan panel
+      tr.style.cursor = 'pointer';
+      tr.title = 'Click to scan/edit this component';
+
       const isExtra = comp.is_extra_component;
       const modelName = (comp.custom_model || comp.model_name || '');
       const serialNum = comp.serial_number || '';
       const assetTag = comp.asset_tag || '';
       const notes = comp.notes || '';
+      const hasData = serialNum || assetTag;
 
       tr.innerHTML = `
         <td>${idx + 1}</td>
-        <td>${esc(comp.component_name || '?' )}${isExtra ? ' <span class="text-secondary text-sm">[extra]</span>' : ''}</td>
+        <td>${esc(comp.component_name || '?')}${isExtra ? ' <span class="text-secondary text-sm">[extra]</span>' : ''}</td>
         <td>${esc(modelName)}</td>
         <td class="mono">${esc(serialNum)}</td>
         <td class="mono">${esc(assetTag)}</td>
@@ -260,12 +316,29 @@ const PositionsScreen = {
           <button class="action-btn danger delete-comp-btn" data-id="${comp.id || ''}">Del</button>
         </td>
       `;
+
+      // FIX: Click on row opens scan panel for this component
+      tr.addEventListener('click', (e) => {
+        // Don't open if the click was on a button
+        if (e.target.tagName === 'BUTTON') return;
+        // If component has a saved id, open via the edit flow
+        if (comp.id) {
+          this._openScanPanel(comp);
+        } else if (!hasData) {
+          // No saved data yet — create default component first, then scan
+          this._openScanPanel(comp);
+        } else {
+          this._openScanPanel(comp);
+        }
+      });
+
       tbody.appendChild(tr);
     });
 
     // Bind edit buttons
     tbody.querySelectorAll('.edit-comp-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         const id = btn.dataset.id;
         if (!id) {
           AppHelpers.toast('Component not saved yet — scan data first', 'warning');
@@ -283,7 +356,8 @@ const PositionsScreen = {
 
     // Bind delete buttons
     tbody.querySelectorAll('.delete-comp-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         const id = btn.dataset.id;
         if (!id) return;
         AppHelpers.confirm('Delete Component?', 'This will remove the component and its data permanently.', async () => {
@@ -299,6 +373,25 @@ const PositionsScreen = {
         });
       });
     });
+  },
+
+  // FIX: Auto-open scan panel for the first missing/partial component
+  _autoScanFirstMissing() {
+    const comps = AppState.currentComponents || [];
+    this.log('Auto-scan: looking for first scannable component among', comps.length, 'components');
+
+    // Find first component that is NOT complete (missing or partial)
+    const target = comps.find(c => c && (c.status === 'missing' || (c.status === 'partial' && !c.serial_number && !c.asset_tag)));
+    if (target) {
+      this.log('Auto-scan: opening panel for component:', target.component_name, 'status:', target.status);
+      this._openScanPanel(target);
+    } else if (comps.length > 0 && comps[0]) {
+      // If all are complete, open the first one anyway for review
+      this.log('Auto-scan: all components complete or scanned — opening first for review');
+      this._openScanPanel(comps[0]);
+    } else {
+      this.log('Auto-scan: no components available');
+    }
   },
 
   _updateSummary() {
@@ -366,7 +459,7 @@ const PositionsScreen = {
     if (!this.scanPanel || !comp) return;
 
     this.scanPanel.classList.remove('hidden');
-    this.scanPanelTitle.textContent = 'Edit: ' + (comp.component_name || 'Component');
+    this.scanPanelTitle.textContent = 'Scan: ' + (comp.component_name || 'Component');
     if (this.editComponentId) this.editComponentId.value = comp.id || '';
     if (this.editCompName) this.editCompName.value = comp.component_name || '';
 
@@ -386,7 +479,12 @@ const PositionsScreen = {
       this.saveStatus.className = 'save-status';
     }
 
-    // Focus for fast scanning
+    // FIX: Update save button text for unsaved components
+    if (this.saveComponentBtn) {
+      this.saveComponentBtn.textContent = comp.id ? 'Save Component' : 'Create & Save';
+    }
+
+    // Focus for fast scanning — focus serial number if empty, otherwise asset tag
     setTimeout(() => {
       if (!comp.serial_number && this.editSerialNumber) {
         this.editSerialNumber.focus();
@@ -416,15 +514,12 @@ const PositionsScreen = {
       this.saveStatus.textContent = '';
       this.saveStatus.className = 'save-status';
     }
+    if (this.saveComponentBtn) this.saveComponentBtn.textContent = 'Save Component';
     setTimeout(() => { if (this.editSerialNumber) this.editSerialNumber.focus(); }, 50);
   },
 
   async _saveComponent() {
     const id = this.editComponentId ? this.editComponentId.value : '';
-    if (!id) {
-      AppHelpers.toast('No component selected — click Edit on a component row first', 'warning');
-      return;
-    }
 
     const data = {
       component_name: (this.editCompName ? this.editCompName.value.trim() : '') || undefined,
@@ -447,7 +542,7 @@ const PositionsScreen = {
       data.custom_model = null;
     }
 
-    this.log('Saving component', id, 'with data:', data);
+    this.log('Saving component id:', id || '(new)', 'with data:', data);
 
     if (this.saveStatus) {
       this.saveStatus.textContent = 'Saving...';
@@ -456,13 +551,45 @@ const PositionsScreen = {
     if (this.saveComponentBtn) this.saveComponentBtn.disabled = true;
 
     try {
-      const updated = await api.updateComponent(parseInt(id), data);
-      this.log('Save response:', updated);
+      let updated;
+
+      if (!id) {
+        // FIX: No component ID yet — this is an in-memory/unsaved component.
+        // Create it via addExtraComponent, then update with scanned data.
+        this.log('Creating new component from scan data');
+        if (!AppState.selectedPositionId) {
+          throw new Error('No position selected');
+        }
+        const compName = data.component_name || 'Component';
+        const created = await api.addExtraComponent(AppState.selectedPositionId, compName);
+        this.log('Created component:', created.id);
+
+        // Now update with the scanned data
+        updated = await api.updateComponent(created.id, data);
+        this.log('Updated component with scan data:', updated.id);
+      } else {
+        updated = await api.updateComponent(parseInt(id), data);
+        this.log('Save response:', updated);
+      }
 
       // Update local cache
-      const idx = (AppState.currentComponents || []).findIndex(c => String(c.id) === String(id));
+      const idx = (AppState.currentComponents || []).findIndex(c => {
+        // Match by id if available, otherwise by component_name (for unsaved items)
+        if (c.id && String(c.id) === String(id)) return true;
+        if (!c.id && c.component_name === (data.component_name || 'Component')) {
+          // Migrate to the newly created id
+          return true;
+        }
+        return false;
+      });
+
       if (idx !== -1) {
-        AppState.currentComponents[idx] = { ...AppState.currentComponents[idx], ...updated };
+        AppState.currentComponents[idx] = { ...AppState.currentComponents[idx], ...updated, id: updated.id || id };
+        // Update the editComponentId for future saves
+        if (this.editComponentId) this.editComponentId.value = updated.id || id;
+      } else if (updated) {
+        // Fallback: push to cache
+        AppState.currentComponents.push(updated);
       }
 
       if (this.saveStatus) {
