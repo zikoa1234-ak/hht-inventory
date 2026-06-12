@@ -23,6 +23,7 @@ const PositionsScreen = {
     this.clearComponentBtn = document.getElementById('clearComponentBtn');
     this.saveStatus = document.getElementById('saveStatus');
     this.scanPanelTitle = document.getElementById('scanPanelTitle');
+    this.editAssignedPerson = document.getElementById('editAssignedPerson');
     this.componentTableBody = document.getElementById('componentTableBody');
     this.positionDetailTitle = document.getElementById('positionDetailTitle');
     this.positionDetailMeta = document.getElementById('positionDetailMeta');
@@ -159,6 +160,7 @@ const PositionsScreen = {
                     asset_tag: '',
                     model_name: '',
                     custom_model: '',
+                    assigned_person: '',
                     notes: '',
                     is_extra_component: false,
                     item_status: 'IN USE',
@@ -268,7 +270,7 @@ const PositionsScreen = {
       // Show helpful empty state with instructions
       tbody.innerHTML = `
         <tr>
-          <td colspan="10" class="empty-state">
+          <td colspan="11" class="empty-state">
             <p><strong>No components loaded for this position.</strong></p>
             <p class="text-secondary">Possible reasons:</p>
             <ul style="text-align:left;display:inline-block;margin:4px 0;font-size:12px;color:var(--text-secondary);">
@@ -310,6 +312,7 @@ const PositionsScreen = {
         <td>${esc(modelName)}</td>
         <td class="mono">${esc(serialNum)}</td>
         <td class="mono">${esc(assetTag)}</td>
+        <td>${esc(comp.assigned_person || '')}</td>
         <td>${esc(notes)}</td>
         <td>${AppState.getItemStatusBadge(comp.item_status)}</td>
         <td>${AppState.getStatusBadge(comp.status || 'missing')}</td>
@@ -419,7 +422,7 @@ const PositionsScreen = {
     }
     const tbody = this.componentTableBody;
     if (tbody) {
-      tbody.innerHTML = '<tr><td colspan="10" class="empty-state">Loading component data...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="11" class="empty-state">Loading component data...</td></tr>';
     }
     if (this.sumComplete) this.sumComplete.textContent = '-';
     if (this.sumPartial) this.sumPartial.textContent = '-';
@@ -432,7 +435,7 @@ const PositionsScreen = {
     }
     const tbody = this.componentTableBody;
     if (tbody) {
-      tbody.innerHTML = `<tr><td colspan="10" class="empty-state">${esc(message)}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="11" class="empty-state">${esc(message)}</td></tr>`;
     }
     if (this.sumComplete) this.sumComplete.textContent = '0';
     if (this.sumPartial) this.sumPartial.textContent = '0';
@@ -478,6 +481,9 @@ const PositionsScreen = {
     if (this.editAssetTag) this.editAssetTag.value = comp.asset_tag || '';
     if (this.editNotes) this.editNotes.value = comp.notes || '';
     if (this.editItemStatus) this.editItemStatus.value = comp.item_status || 'IN USE';
+    if (this.editAssignedPerson) {
+      populatePeopleSelect(this.editAssignedPerson, comp.assigned_person || '');
+    }
     if (this.saveStatus) {
       this.saveStatus.textContent = '';
       this.saveStatus.className = 'save-status';
@@ -515,6 +521,9 @@ const PositionsScreen = {
     if (this.editCustomModel) this.editCustomModel.value = '';
     if (this.editModelSelect) this.editModelSelect.value = '';
     if (this.editItemStatus) this.editItemStatus.value = 'IN USE';
+    if (this.editAssignedPerson) {
+      populatePeopleSelect(this.editAssignedPerson, '');
+    }
     if (this.saveStatus) {
       this.saveStatus.textContent = '';
       this.saveStatus.className = 'save-status';
@@ -532,6 +541,7 @@ const PositionsScreen = {
       asset_tag: (this.editAssetTag ? this.editAssetTag.value.trim() : '') || null,
       notes: (this.editNotes ? this.editNotes.value.trim() : '') || null,
       item_status: this.editItemStatus ? this.editItemStatus.value : 'IN USE',
+      assigned_person: (this.editAssignedPerson ? this.editAssignedPerson.value.trim() : '') || null,
     };
 
     const modelId = this.editModelSelect ? this.editModelSelect.value : '';

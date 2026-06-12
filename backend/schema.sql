@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS position_components (
   is_extra_component  BOOLEAN      NOT NULL DEFAULT FALSE,
   sort_order          INTEGER      NOT NULL DEFAULT 0,
   updated_at          TIMESTAMP    NOT NULL DEFAULT NOW(),
+  assigned_person     VARCHAR(255),
   updated_by          VARCHAR(255),
   UNIQUE(position_id, component_name)
 );

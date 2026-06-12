@@ -316,7 +316,7 @@ router.post('/:id/components', async (req, res) => {
 
 // PUT /api/position-components/:id — update a single component's data
 router.put('/components/:id', async (req, res) => {
-  const { component_name, model_id, custom_model, serial_number, asset_tag, notes, updated_by, item_status } = req.body;
+  const { component_name, model_id, custom_model, serial_number, asset_tag, notes, updated_by, item_status, assigned_person } = req.body;
 
   // Build dynamic update
   const fields = {};
@@ -327,6 +327,7 @@ router.put('/components/:id', async (req, res) => {
   if (asset_tag !== undefined) fields.asset_tag = asset_tag || null;
   if (notes !== undefined) fields.notes = notes || null;
   if (updated_by !== undefined) fields.updated_by = updated_by;
+  if (assigned_person !== undefined) fields.assigned_person = assigned_person || null;
   if (item_status !== undefined) {
     // Validate allowed values
     const allowed = ['IN USE', 'IN STOCK', 'FAULTY'];

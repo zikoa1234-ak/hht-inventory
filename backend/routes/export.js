@@ -28,7 +28,7 @@ router.get('/positions/:id.csv', async (req, res) => {
 
     const comps = await db.query(
       `SELECT pc.component_name, pc.custom_model, pc.serial_number, pc.asset_tag,
-              pc.notes, pc.status, pc.item_status, pc.updated_at, m.name AS model_name
+              pc.notes, pc.status, pc.item_status, pc.assigned_person, pc.updated_at, m.name AS model_name
        FROM position_components pc
        LEFT JOIN models m ON m.id = pc.model_id
        WHERE pc.position_id = $1
@@ -37,7 +37,7 @@ router.get('/positions/:id.csv', async (req, res) => {
     );
 
     const headers = ['site', 'position', 'template', 'component', 'model', 'customModel',
-                     'serialNumber', 'assetTag', 'notes', 'status', 'itemStatus', 'updatedAt'];
+                     'serialNumber', 'assetTag', 'notes', 'status', 'itemStatus', 'assignedPerson', 'updatedAt'];
     const rows = comps.rows.map(c => [
       csvField(pos.rows[0].site_name),
       csvField(pos.rows[0].position_name),
@@ -50,6 +50,7 @@ router.get('/positions/:id.csv', async (req, res) => {
       csvField(c.notes),
       csvField(c.status),
       csvField(c.item_status || 'IN USE'),
+      csvField(c.assigned_person || ''),
       csvField(c.updated_at),
     ]);
 
@@ -84,7 +85,8 @@ router.get('/positions.csv', async (req, res) => {
       SELECT s.name AS site_name, p.name AS position_name,
              pt.name AS template_name,
              pc.component_name, m.name AS model_name, pc.custom_model,
-             pc.serial_number, pc.asset_tag, pc.notes, pc.status, pc.item_status, pc.updated_at
+             pc.serial_number, pc.asset_tag, pc.notes, pc.status, pc.item_status,
+             pc.assigned_person, pc.updated_at
       FROM position_components pc
       JOIN positions p ON p.id = pc.position_id
       JOIN sites s ON s.id = p.site_id
@@ -97,7 +99,7 @@ router.get('/positions.csv', async (req, res) => {
     const { rows } = await db.query(query, params);
 
     const headers = ['site', 'position', 'template', 'component', 'model', 'customModel',
-                     'serialNumber', 'assetTag', 'notes', 'status', 'itemStatus', 'updatedAt'];
+                     'serialNumber', 'assetTag', 'notes', 'status', 'itemStatus', 'assignedPerson', 'updatedAt'];
     const csvRows = rows.map(c => [
       csvField(c.site_name),
       csvField(c.position_name),
@@ -110,6 +112,7 @@ router.get('/positions.csv', async (req, res) => {
       csvField(c.notes),
       csvField(c.status),
       csvField(c.item_status || 'IN USE'),
+      csvField(c.assigned_person || ''),
       csvField(c.updated_at),
     ]);
 

@@ -202,6 +202,7 @@
                 <th>Model</th>
                 <th>Serial Number</th>
                 <th>Asset Tag</th>
+                <th>Assigned Person</th>
                 <th>Notes</th>
                 <th>Item Status</th>
                 <th>Status</th>
@@ -257,6 +258,13 @@
               <option value="IN USE">IN USE</option>
               <option value="IN STOCK">IN STOCK</option>
               <option value="FAULTY">FAULTY</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Assigned Person</label>
+            <select id="editAssignedPerson" class="form-control">
+              <option value="">-- Assign Person --</option>
             </select>
           </div>
 
@@ -375,6 +383,7 @@
 
   <!-- Scripts -->
   <script src="js/api.js"></script>
+  <script src="js/people.js"></script>
   <script src="js/hosts.js"></script>
   <script src="js/state.js"></script>
   <script src="js/screens/templates.js"></script>
