@@ -262,10 +262,11 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">Assigned Person</label>
-            <select id="editAssignedPerson" class="form-control">
-              <option value="">-- Assign Person --</option>
-            </select>
+            <label class="form-label">Assigned Person <span class="required-star">*</span></label>
+            <input type="text" id="editAssignedPerson" class="form-control"
+                   list="peopleList" placeholder="Type or select a name..."
+                   autocomplete="off">
+            <datalist id="peopleList"></datalist>
           </div>
 
           <div class="form-group">
@@ -389,5 +390,13 @@
   <script src="js/screens/templates.js"></script>
   <script src="js/screens/positions.js"></script>
   <script src="js/app.js"></script>
+  <script>
+    // Populate the people datalist once the DOM is ready
+    document.addEventListener('DOMContentLoaded', function () {
+      if (typeof populatePeopleDatalist !== 'undefined') {
+        populatePeopleDatalist('peopleList');
+      }
+    });
+  </script>
 </body>
 </html>

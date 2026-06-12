@@ -30,8 +30,23 @@ const ASSIGNED_PEOPLE = [
 ];
 
 /**
- * Render an <option> list for a <select> or <datalist> element.
- * Adds a blank/default option at the top.
+ * Populate a <datalist> element with all person names.
+ * Call this once on page load.
+ * @param {string} datalistId - The id of the <datalist> element
+ */
+function populatePeopleDatalist(datalistId) {
+  var dl = document.getElementById(datalistId);
+  if (!dl) return;
+  dl.innerHTML = '';
+  ASSIGNED_PEOPLE.forEach(function (name) {
+    var opt = document.createElement('option');
+    opt.value = name;
+    dl.appendChild(opt);
+  });
+}
+
+/**
+ * Populate a <select> element with person options (fallback if needed).
  * @param {HTMLSelectElement} selectEl - The select element to populate
  * @param {string} [selectedValue] - Value to pre-select
  */
@@ -47,6 +62,20 @@ function populatePeopleSelect(selectEl, selectedValue) {
     }
     selectEl.appendChild(opt);
   });
+}
+
+/**
+ * Check if a given name is in the ASSIGNED_PEOPLE list.
+ * @param {string} name
+ * @returns {boolean}
+ */
+function isValidPerson(name) {
+  if (!name || !name.trim()) return false;
+  var n = name.trim().toUpperCase();
+  for (var i = 0; i < ASSIGNED_PEOPLE.length; i++) {
+    if (ASSIGNED_PEOPLE[i] === n) return true;
+  }
+  return false;
 }
 
 /**

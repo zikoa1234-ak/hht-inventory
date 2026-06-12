@@ -82,6 +82,7 @@ a:hover { color: var(--primary-hover); }
 .mt-16 { margin-top: 16px; }
 .mb-4 { margin-bottom: 4px; }
 .hidden { display: none !important; }
+.required-star { color: #e74c3c; font-weight: bold; }
 
 /* --- Layout --- */
 #app { max-width: 1280px; margin: 0 auto; padding: 0 12px 32px; }

@@ -482,7 +482,7 @@ const PositionsScreen = {
     if (this.editNotes) this.editNotes.value = comp.notes || '';
     if (this.editItemStatus) this.editItemStatus.value = comp.item_status || 'IN USE';
     if (this.editAssignedPerson) {
-      populatePeopleSelect(this.editAssignedPerson, comp.assigned_person || '');
+      this.editAssignedPerson.value = comp.assigned_person || '';
     }
     if (this.saveStatus) {
       this.saveStatus.textContent = '';
@@ -522,7 +522,7 @@ const PositionsScreen = {
     if (this.editModelSelect) this.editModelSelect.value = '';
     if (this.editItemStatus) this.editItemStatus.value = 'IN USE';
     if (this.editAssignedPerson) {
-      populatePeopleSelect(this.editAssignedPerson, '');
+      this.editAssignedPerson.value = '';
     }
     if (this.saveStatus) {
       this.saveStatus.textContent = '';
@@ -559,6 +559,18 @@ const PositionsScreen = {
     }
 
     this.log('Saving component id:', id || '(new)', 'with data:', data);
+
+    // Validate: assigned person is required
+    if (!data.assigned_person || !isValidPerson(data.assigned_person)) {
+      if (this.saveStatus) {
+        this.saveStatus.textContent = 'Error: Please select a valid assigned person';
+        this.saveStatus.className = 'save-status error';
+      }
+      AppHelpers.toast('Please select a valid assigned person', 'error');
+      if (this.editAssignedPerson) this.editAssignedPerson.focus();
+      if (this.saveComponentBtn) this.saveComponentBtn.disabled = false;
+      return;
+    }
 
     if (this.saveStatus) {
       this.saveStatus.textContent = 'Saving...';
