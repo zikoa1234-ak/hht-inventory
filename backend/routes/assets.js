@@ -80,6 +80,30 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/assets/check-serial — lightweight duplicate check for real-time validation
+router.get('/check-serial', async (req, res) => {
+  try {
+    const { serial, exclude_id } = req.query;
+    if (!serial || !serial.trim()) {
+      return res.json({ exists: false });
+    }
+    let query;
+    let params;
+    if (exclude_id) {
+      query = 'SELECT id FROM position_components WHERE serial_number = $1 AND serial_number IS NOT NULL AND serial_number != \'\' AND id != $2 LIMIT 1';
+      params = [serial.trim(), exclude_id];
+    } else {
+      query = 'SELECT id FROM position_components WHERE serial_number = $1 AND serial_number IS NOT NULL AND serial_number != \'\' LIMIT 1';
+      params = [serial.trim()];
+    }
+    const { rows } = await db.query(query, params);
+    res.json({ exists: rows.length > 0 });
+  } catch (err) {
+    console.error('GET /assets/check-serial error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/assets — create a new asset
 router.post('/', async (req, res) => {
   try {
@@ -99,10 +123,10 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Duplicate serial check: same location + area + serial_number
+    // Duplicate serial check: global — any existing S/N blocks insert
     const dupCheck = await db.query(
-      'SELECT id FROM position_components WHERE location = $1 AND area = $2 AND serial_number = $3',
-      [location, area, serial_number]
+      'SELECT id FROM position_components WHERE serial_number = $1 AND serial_number IS NOT NULL AND serial_number != \'\'',
+      [serial_number]
     );
     if (dupCheck.rows.length > 0) {
       return res.status(409).json({ error: 'This serial number is duplicated' });
@@ -122,7 +146,7 @@ router.post('/', async (req, res) => {
          serial_number, assigned_person, asset_status, notes, status, sort_order, item_status)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'complete', 0, 'IN USE')
       RETURNING id, location, area, asset_name, box, serial_number,
-                assigned_person, asset_status, notes, created_at, updated_at
+                assigned_person, asset_status, notes, updated_at
     `, [
       positionId,
       position || 'Asset',
@@ -165,12 +189,12 @@ router.put('/:id', async (req, res) => {
       });
     }
 
-    // Duplicate serial check (exclude self)
+    // Duplicate serial check: global (exclude self)
     if (serial_number) {
       const dupCheck = await db.query(
         `SELECT id FROM position_components
-         WHERE location = $1 AND area = $2 AND serial_number = $3 AND id != $4`,
-        [location || existing.rows[0].location, area || existing.rows[0].area, serial_number, id]
+         WHERE serial_number = $1 AND serial_number IS NOT NULL AND serial_number != '' AND id != $2`,
+        [serial_number, id]
       );
       if (dupCheck.rows.length > 0) {
         return res.status(409).json({ error: 'This serial number is duplicated' });
@@ -211,7 +235,7 @@ router.put('/:id', async (req, res) => {
       SET ${setClauses.join(', ')}
       WHERE id = $${paramIdx}
       RETURNING id, location, area, asset_name, box, serial_number,
-                assigned_person, asset_status, notes, created_at, updated_at
+                assigned_person, asset_status, notes, updated_at
     `, params);
 
     res.json(result.rows[0]);

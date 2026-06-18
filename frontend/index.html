@@ -245,6 +245,7 @@
             <div class="form-group">
               <label class="form-label">Serial Number</label>
               <input type="text" id="editSerialNumber" class="form-control input-scan" placeholder="Scan or type serial..." autofocus>
+              <div id="editSerialError" class="form-error hidden">This serial number is duplicated</div>
             </div>
             <div class="form-group">
               <label class="form-label">Asset Tag</label>
@@ -283,6 +284,88 @@
         </div>
       </div>
     </section>
+
+    <!-- ====== ASSET VIEW MODAL ====== -->
+    <div id="viewAssetOverlay" class="modal-overlay hidden">
+      <div class="modal-panel modal-sm">
+        <div class="modal-header">
+          <h3>Asset Details</h3>
+          <button class="btn btn--sm btn--outline modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body" id="viewAssetContent">
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn--outline modal-close-btn">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== ASSET FORM MODAL ====== -->
+    <div id="assetFormOverlay" class="modal-overlay hidden">
+      <div class="modal-panel">
+        <div class="modal-header">
+          <h3 id="assetFormTitle">Add Asset</h3>
+          <button class="btn btn--sm btn--outline modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="afAssetId" value="">
+          <div class="two-col">
+            <div class="form-group">
+              <label class="form-label">Location <span class="required-star">*</span></label>
+              <input type="text" id="afLocation" class="form-control" readonly>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Area <span class="required-star">*</span></label>
+              <input type="text" id="afArea" class="form-control" readonly>
+            </div>
+          </div>
+          <div class="two-col">
+            <div class="form-group">
+              <label class="form-label">Position <span class="required-star">*</span></label>
+              <input type="text" id="afPosition" class="form-control" placeholder="e.g. Checkpoint-01">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Box</label>
+              <input type="text" id="afBox" class="form-control" placeholder="Box number or code">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Asset Name <span class="required-star">*</span></label>
+            <input type="text" id="afAssetName" class="form-control" placeholder="e.g. Barcode Scanner">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Serial Number <span class="required-star">*</span></label>
+            <input type="text" id="afSerialNumber" class="form-control" placeholder="Scan or type serial number...">
+            <div id="afSerialError" class="form-error hidden">This serial number is duplicated</div>
+          </div>
+          <div class="two-col">
+            <div class="form-group">
+              <label class="form-label">Assigned Person</label>
+              <select id="afAssignedPerson" class="form-control">
+                <option value="">-- Assign Person --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Status</label>
+              <select id="afStatus" class="form-control">
+                <option value="Active">Active</option>
+                <option value="In Repair">In Repair</option>
+                <option value="In Stock">In Stock</option>
+                <option value="Retired">Retired</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notes</label>
+            <textarea id="afNotes" class="form-control" rows="2" placeholder="Optional notes..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn--outline" id="afCancelBtn">Cancel</button>
+          <button class="btn btn--primary" id="afSaveBtn">Add Asset</button>
+        </div>
+      </div>
+    </div>
 
     <!-- ====== SETTINGS MODAL ====== -->
     <div id="settingsOverlay" class="modal-overlay hidden">
@@ -389,6 +472,7 @@
   <script src="js/state.js"></script>
   <script src="js/screens/templates.js"></script>
   <script src="js/screens/positions.js"></script>
+  <script src="js/screens/assets.js"></script>
   <script src="js/app.js"></script>
   <script>
     // Populate the people datalist once the DOM is ready

@@ -87,6 +87,11 @@ const AssetsScreen = {
       this.afCancelBtn.addEventListener('click', () => this._closeForm());
     }
 
+    // Real-time duplicate check on serial number input
+    if (this.afSerialNumber) {
+      this.afSerialNumber.addEventListener('input', () => this._checkSerialDuplicate());
+    }
+
     // Close overlays on outside click
     if (this.assetFormOverlay) {
       this.assetFormOverlay.addEventListener('click', (e) => {
@@ -326,6 +331,39 @@ const AssetsScreen = {
 
   _onFilterChange() {
     this._loadAssets();
+  },
+
+  // Real-time duplicate serial number check (assets form)
+  _checkSerialDuplicateDebounceTimer: null,
+  _checkSerialDuplicate() {
+    const serial = (this.afSerialNumber ? this.afSerialNumber.value : '').trim();
+    if (this.afSerialError) {
+      this.afSerialError.classList.add('hidden');
+      this.afSerialError.textContent = '';
+    }
+    if (!serial) return;
+
+    if (this._checkSerialDuplicateDebounceTimer) {
+      clearTimeout(this._checkSerialDuplicateDebounceTimer);
+    }
+
+    this._checkSerialDuplicateDebounceTimer = setTimeout(async () => {
+      try {
+        const excludeId = this.afAssetId ? this.afAssetId.value : '';
+        const params = new URLSearchParams({ serial });
+        if (excludeId) params.set('exclude_id', excludeId);
+
+        const res = await fetch('/api/assets/check-serial?' + params.toString());
+        const data = await res.json();
+
+        if (data.exists && this.afSerialError) {
+          this.afSerialError.textContent = 'This serial number is duplicated';
+          this.afSerialError.classList.remove('hidden');
+        }
+      } catch (_) {
+        // Silent fail — backend catches duplicates on submit
+      }
+    }, 400);
   },
 
   // ===== VIEW ASSET =====

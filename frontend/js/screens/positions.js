@@ -49,6 +49,10 @@ const PositionsScreen = {
           if (this.editAssetTag) this.editAssetTag.focus();
         }
       });
+      // Real-time duplicate check on serial number input
+      this.editSerialNumber.addEventListener('input', () => {
+        this._checkSerialDuplicate('edit');
+      });
     }
     if (this.editAssetTag) {
       this.editAssetTag.addEventListener('keydown', (e) => {
@@ -494,6 +498,10 @@ const PositionsScreen = {
       this.saveComponentBtn.textContent = comp.id ? 'Save Component' : 'Create & Save';
     }
 
+    // Clear serial duplicate error
+    const serError = document.getElementById('editSerialError');
+    if (serError) { serError.classList.add('hidden'); serError.textContent = ''; }
+
     // Focus for fast scanning — focus serial number if empty, otherwise asset tag
     setTimeout(() => {
       if (!comp.serial_number && this.editSerialNumber) {
@@ -532,8 +540,53 @@ const PositionsScreen = {
     setTimeout(() => { if (this.editSerialNumber) this.editSerialNumber.focus(); }, 50);
   },
 
+  // Real-time duplicate serial number check
+  _checkSerialDuplicateDebounceTimer: null,
+  _checkSerialDuplicate(source) {
+    const input = source === 'edit' ? this.editSerialNumber : null;
+    if (!input) return;
+    const serial = input.value.trim();
+    const errorEl = document.getElementById('editSerialError');
+
+    // Clear previous state
+    if (errorEl) { errorEl.classList.add('hidden'); errorEl.textContent = ''; }
+
+    if (!serial) return;
+
+    // Clear any pending debounce
+    if (this._checkSerialDuplicateDebounceTimer) {
+      clearTimeout(this._checkSerialDuplicateDebounceTimer);
+    }
+
+    this._checkSerialDuplicateDebounceTimer = setTimeout(async () => {
+      try {
+        const excludeId = this.editComponentId ? this.editComponentId.value : '';
+        const params = new URLSearchParams({ serial });
+        if (excludeId) params.set('exclude_id', excludeId);
+
+        const res = await fetch('/api/assets/check-serial?' + params.toString());
+        const data = await res.json();
+
+        if (data.exists && errorEl) {
+          errorEl.textContent = 'This serial number is duplicated';
+          errorEl.classList.remove('hidden');
+        }
+      } catch (_) {
+        // Silent fail — backend validation still catches duplicates on submit
+      }
+    }, 400);
+  },
+
   async _saveComponent() {
     const id = this.editComponentId ? this.editComponentId.value : '';
+
+    // Block save if duplicate error is visible
+    const serError = document.getElementById('editSerialError');
+    if (serError && !serError.classList.contains('hidden')) {
+      AppHelpers.toast(serError.textContent || 'Serial number error', 'error');
+      if (this.editSerialNumber) this.editSerialNumber.focus();
+      return;
+    }
 
     const data = {
       component_name: (this.editCompName ? this.editCompName.value.trim() : '') || undefined,
@@ -629,6 +682,15 @@ const PositionsScreen = {
       AppHelpers.toast('Component saved', 'success');
     } catch (err) {
       this.log('Save error:', err.message);
+      // Show duplicate errors inline on the serial field
+      if (err.message === 'This serial number is duplicated' && serError) {
+        serError.textContent = 'This serial number is duplicated';
+        serError.classList.remove('hidden');
+        if (this.editSerialNumber) this.editSerialNumber.focus();
+        // Re-enable save button (don't hide in saveStatus)
+        if (this.saveComponentBtn) this.saveComponentBtn.disabled = false;
+        return;
+      }
       if (this.saveStatus) {
         this.saveStatus.textContent = 'Error: ' + err.message;
         this.saveStatus.className = 'save-status error';

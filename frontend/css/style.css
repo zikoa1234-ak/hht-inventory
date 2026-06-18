@@ -320,6 +320,14 @@ textarea.form-control { font-family: var(--font-family); resize: vertical; }
 .action-btn:hover { border-color: var(--primary); color: var(--primary); }
 .action-btn.danger:hover { border-color: var(--error); color: var(--error); }
 
+/* --- Form error (duplicate serial, validation) --- */
+.form-error {
+  color: var(--error);
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
 /* --- Responsive --- */
 @media (max-width: 640px) {
   .dashboard-grid { grid-template-columns: 1fr; }

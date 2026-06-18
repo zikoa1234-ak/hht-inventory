@@ -348,6 +348,18 @@ router.put('/components/:id', async (req, res) => {
       fields.status = computeStatus(sn, at);
     }
 
+    // Duplicate serial check: global (exclude self)
+    if (serial_number !== undefined && serial_number && serial_number.trim()) {
+      const dupCheck = await db.query(
+        `SELECT id FROM position_components
+         WHERE serial_number = $1 AND serial_number IS NOT NULL AND serial_number != '' AND id != $2 LIMIT 1`,
+        [serial_number.trim(), req.params.id]
+      );
+      if (dupCheck.rows.length > 0) {
+        return res.status(409).json({ error: 'This serial number is duplicated' });
+      }
+    }
+
     const setClauses = [];
     const params = [];
     let idx = 1;
