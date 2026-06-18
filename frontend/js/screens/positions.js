@@ -230,7 +230,10 @@ const PositionsScreen = {
       let templateId = posFromState.template_id;
       if (!templateId && templateName) {
         const templates = await AppState.loadTemplates();
-        const tpl = templates.find(t => t.name.toLowerCase() === templateName.toLowerCase());
+        let tpl = templates.find(t => t.name.toLowerCase() === templateName.toLowerCase());
+        if (!tpl) {
+          tpl = templates.find(t => t.name.toLowerCase().includes(templateName.toLowerCase()));
+        }
         if (tpl) templateId = tpl.id;
       }
 

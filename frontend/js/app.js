@@ -460,9 +460,13 @@ var App = {
 
     this.log('Classified as template:', templateName);
 
-    // Find template ID
+    // Find template ID — try exact match first, then partial (handles "CMN Gate" / "gate")
     var templates = await AppState.loadTemplates();
-    var tpl = templates.find(function (t) { return t.name.toLowerCase() === templateName.toLowerCase(); });
+    var tplNameLower = templateName.toLowerCase();
+    var tpl = templates.find(function (t) { return t.name.toLowerCase() === tplNameLower; });
+    if (!tpl) {
+      tpl = templates.find(function (t) { return t.name.toLowerCase().includes(tplNameLower); });
+    }
     if (!tpl) {
       AppHelpers.toast('Template "' + templateName + '" not found in system', 'error');
       return;

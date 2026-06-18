@@ -73,10 +73,17 @@ for (const host of HOST_POSITIONS) {
 }
 
 // Get host positions matching a template name (case-insensitive)
+// Handles both exact names ("gate") and per-location names ("CMN Gate")
 function getHostsForTemplate(templateName) {
   if (!templateName) return [];
-  const key = templateName.toLowerCase();
-  return HOST_POSITIONS_BY_TEMPLATE[key] || [];
+  const name = templateName.toLowerCase();
+  // Try exact match first
+  if (HOST_POSITIONS_BY_TEMPLATE[name]) return HOST_POSITIONS_BY_TEMPLATE[name];
+  // Partial match: check if any known template key is contained in the name
+  for (const [key, hosts] of Object.entries(HOST_POSITIONS_BY_TEMPLATE)) {
+    if (name.includes(key)) return hosts;
+  }
+  return [];
 }
 
 // Derive template name from a hostname

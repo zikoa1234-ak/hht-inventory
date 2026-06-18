@@ -19,7 +19,8 @@ async function ensurePosition(location, area) {
   }
   // Find site_id and template_id
   const site = await db.query('SELECT id FROM sites WHERE name = $1', [location]);
-  const tpl = await db.query('SELECT id FROM position_templates WHERE name = $1', [area]);
+  // Match template by partial name (handles "CMN Gate" / "Gate" etc.)
+  const tpl = await db.query('SELECT id FROM position_templates WHERE LOWER(name) LIKE $1', ['%' + area.toLowerCase() + '%']);
   if (site.rows.length === 0 || tpl.rows.length === 0) {
     return null;
   }
