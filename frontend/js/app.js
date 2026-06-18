@@ -64,16 +64,13 @@ var App = {
     document.querySelectorAll('[data-screen]').forEach(function (el) {
       el.addEventListener('click', function () {
         var screen = el.dataset.screen;
-        if (el.dataset.screen === 'templates') {
-                  AppHelpers.showScreen('templates');
-                  TemplatesScreen.render();
-                } else if (el.dataset.screen === 'dashboard') {
-                  AppHelpers.showScreen('dashboard');
-                  App.refreshDashboard();
-                } else if (el.dataset.screen === 'locations') {
-                  AppHelpers.showScreen('locations');
-                  AssetsScreen.showLocationPicker();
-                } else if (el.dataset.screen === 'settings') {
+        if (screen === 'templates') {
+          AppHelpers.showScreen('templates');
+          TemplatesScreen.render();
+        } else if (screen === 'dashboard') {
+          AppHelpers.showScreen('dashboard');
+          App.refreshDashboard();
+        } else if (screen === 'settings') {
           App._openSettings();
         }
       });

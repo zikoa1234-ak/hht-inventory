@@ -18,7 +18,6 @@ app.use('/api/positions', require('./routes/positions'));
 app.use('/api/models', require('./routes/models'));
 app.use('/api/sessions', require('./routes/sessions'));
 app.use('/api/export', require('./routes/export'));
-app.use('/api/assets', require('./routes/assets'));
 
 // Serve static frontend in production
 const frontendPath = path.join(__dirname, '..', 'frontend');
