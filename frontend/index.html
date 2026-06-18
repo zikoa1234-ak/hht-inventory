@@ -12,6 +12,7 @@
     <!-- ====== TOP NAV ====== -->
     <nav id="topNav" class="top-nav">
       <button class="nav-btn" data-screen="dashboard" title="Dashboard">&#9632;</button>
+      <button class="nav-btn" data-screen="locations" title="Assets by Location">&#9881;</button>
       <span class="nav-title">HHT Inventory</span>
       <button class="nav-btn" data-screen="settings" title="Settings">&#9881;</button>
     </nav>
@@ -284,6 +285,164 @@
       </div>
     </section>
 
+    <!-- ====== LOCATION PICKER ====== -->
+    <section id="screen-locations" class="screen">
+      <div class="screen-back-header">
+        <button class="btn btn--outline btn--sm" data-screen="dashboard">&larr; Back</button>
+        <h2>Select Location</h2>
+      </div>
+      <div class="location-grid" id="locationGrid"></div>
+    </section>
+
+    <!-- ====== AREA PICKER ====== -->
+    <section id="screen-areas" class="screen">
+      <div class="screen-back-header">
+        <button class="btn btn--outline btn--sm" data-screen="locations">&larr; Back</button>
+        <h2>Select Area — <span id="areaLocationLabel"></span></h2>
+      </div>
+      <div class="location-grid" id="areaGrid"></div>
+    </section>
+
+    <!-- ====== ASSET WORKSPACE ====== -->
+    <section id="screen-assets" class="screen">
+      <div class="screen-back-header">
+        <button class="btn btn--outline btn--sm" data-screen="locations">&larr; Back</button>
+        <div>
+          <h2 id="assetHeaderTitle">Assets</h2>
+          <span id="assetBreadcrumb" class="text-secondary text-sm"></span>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn--sm btn--outline" id="changeLocationBtn">Change Location</button>
+          <button class="btn btn--sm btn--outline" id="changeAreaBtn">Change Area</button>
+          <button class="btn btn--sm btn--primary" id="addAssetBtn">+ Add Asset</button>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filter-bar">
+        <input type="text" id="assetSearch" class="form-control" placeholder="Search by asset name or serial..." style="flex:1;">
+        <select id="assetFilterPerson" class="form-control" style="max-width:200px;">
+          <option value="">All People</option>
+        </select>
+        <select id="assetFilterStatus" class="form-control" style="max-width:150px;">
+          <option value="">All Statuses</option>
+        </select>
+      </div>
+
+      <!-- Empty state -->
+      <div id="assetEmptyState" class="empty-state-block hidden">
+        <p><strong>No assets yet for this location and area</strong></p>
+        <p class="text-secondary">Click &quot;+ Add Asset&quot; to create the first one.</p>
+      </div>
+
+      <!-- Asset table -->
+      <div class="card mt-8">
+        <div class="card-header">
+          <h3>Assets</h3>
+        </div>
+        <div class="card-body table-wrap">
+          <table class="data-table" id="assetTable">
+            <thead>
+              <tr>
+                <th>Position</th>
+                <th>Box</th>
+                <th>Asset Name</th>
+                <th>Serial Number</th>
+                <th>Assigned Person</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="assetTableBody">
+              <tr><td colspan="7" class="empty-state">Select a location and area to view assets</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====== ASSET VIEW MODAL ====== -->
+    <div id="viewAssetOverlay" class="modal-overlay hidden">
+      <div class="modal-panel modal-sm">
+        <div class="modal-header">
+          <h3>Asset Details</h3>
+          <button class="btn btn--sm btn--outline modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body" id="viewAssetContent">
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn--outline modal-close-btn">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== ASSET FORM MODAL ====== -->
+    <div id="assetFormOverlay" class="modal-overlay hidden">
+      <div class="modal-panel">
+        <div class="modal-header">
+          <h3 id="assetFormTitle">Add Asset</h3>
+          <button class="btn btn--sm btn--outline modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="afAssetId" value="">
+          <div class="two-col">
+            <div class="form-group">
+              <label class="form-label">Location <span class="required-star">*</span></label>
+              <input type="text" id="afLocation" class="form-control" readonly>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Area <span class="required-star">*</span></label>
+              <input type="text" id="afArea" class="form-control" readonly>
+            </div>
+          </div>
+          <div class="two-col">
+            <div class="form-group">
+              <label class="form-label">Position <span class="required-star">*</span></label>
+              <input type="text" id="afPosition" class="form-control" placeholder="e.g. Checkpoint-01">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Box</label>
+              <input type="text" id="afBox" class="form-control" placeholder="Box number or code">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Asset Name <span class="required-star">*</span></label>
+            <input type="text" id="afAssetName" class="form-control" placeholder="e.g. Barcode Scanner">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Serial Number <span class="required-star">*</span></label>
+            <input type="text" id="afSerialNumber" class="form-control" placeholder="Scan or type serial number...">
+            <div id="afSerialError" class="form-error hidden">This serial number is duplicated</div>
+          </div>
+          <div class="two-col">
+            <div class="form-group">
+              <label class="form-label">Assigned Person</label>
+              <select id="afAssignedPerson" class="form-control">
+                <option value="">-- Assign Person --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Status</label>
+              <select id="afStatus" class="form-control">
+                <option value="Active">Active</option>
+                <option value="In Repair">In Repair</option>
+                <option value="In Stock">In Stock</option>
+                <option value="Retired">Retired</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notes</label>
+            <textarea id="afNotes" class="form-control" rows="2" placeholder="Optional notes..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn--outline" id="afCancelBtn">Cancel</button>
+          <button class="btn btn--primary" id="afSaveBtn">Add Asset</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ====== SETTINGS MODAL ====== -->
     <div id="settingsOverlay" class="modal-overlay hidden">
       <div class="modal-panel">
@@ -388,6 +547,7 @@
   <script src="js/hosts.js"></script>
   <script src="js/state.js"></script>
   <script src="js/screens/templates.js"></script>
+  <script src="js/screens/assets.js"></script>
   <script src="js/screens/positions.js"></script>
   <script src="js/app.js"></script>
   <script>
