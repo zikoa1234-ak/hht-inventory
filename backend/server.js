@@ -15,7 +15,6 @@ app.use(express.json({ limit: '5mb' }));
 app.use('/api/sites', require('./routes/sites'));
 app.use('/api/templates', require('./routes/templates'));
 app.use('/api/positions', require('./routes/positions'));
-app.use('/api/assets', require('./routes/assets'));
 app.use('/api/models', require('./routes/models'));
 app.use('/api/sessions', require('./routes/sessions'));
 app.use('/api/export', require('./routes/export'));
