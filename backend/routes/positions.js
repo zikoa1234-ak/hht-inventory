@@ -360,6 +360,18 @@ router.put('/components/:id', async (req, res) => {
       }
     }
 
+    // Duplicate asset tag check: global (exclude self)
+    if (asset_tag !== undefined && asset_tag && asset_tag.trim()) {
+      const dupCheck = await db.query(
+        `SELECT id FROM position_components
+         WHERE asset_tag = $1 AND asset_tag IS NOT NULL AND asset_tag != '' AND id != $2 LIMIT 1`,
+        [asset_tag.trim(), req.params.id]
+      );
+      if (dupCheck.rows.length > 0) {
+        return res.status(409).json({ error: 'This asset tag is duplicated' });
+      }
+    }
+
     const setClauses = [];
     const params = [];
     let idx = 1;

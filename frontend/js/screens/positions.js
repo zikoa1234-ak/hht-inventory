@@ -62,6 +62,10 @@ const PositionsScreen = {
           this._saveComponent();
         }
       });
+      // Real-time duplicate check on asset tag input
+      this.editAssetTag.addEventListener('input', () => {
+        this._checkAssetTagDuplicate();
+      });
     }
 
     if (this.closeScanPanelBtn) {
@@ -498,9 +502,11 @@ const PositionsScreen = {
       this.saveComponentBtn.textContent = comp.id ? 'Save Component' : 'Create & Save';
     }
 
-    // Clear serial duplicate error
+    // Clear serial and asset tag duplicate errors
     const serError = document.getElementById('editSerialError');
     if (serError) { serError.classList.add('hidden'); serError.textContent = ''; }
+    const tagError = document.getElementById('editAssetTagError');
+    if (tagError) { tagError.classList.add('hidden'); tagError.textContent = ''; }
 
     // Focus for fast scanning — focus serial number if empty, otherwise asset tag
     setTimeout(() => {
@@ -537,6 +543,11 @@ const PositionsScreen = {
       this.saveStatus.className = 'save-status';
     }
     if (this.saveComponentBtn) this.saveComponentBtn.textContent = 'Save Component';
+    // Clear both error displays
+    const clearSer = document.getElementById('editSerialError');
+    if (clearSer) { clearSer.classList.add('hidden'); clearSer.textContent = ''; }
+    const clearTag = document.getElementById('editAssetTagError');
+    if (clearTag) { clearTag.classList.add('hidden'); clearTag.textContent = ''; }
     setTimeout(() => { if (this.editSerialNumber) this.editSerialNumber.focus(); }, 50);
   },
 
@@ -577,6 +588,40 @@ const PositionsScreen = {
     }, 400);
   },
 
+  // Real-time duplicate asset tag check
+  _checkAssetTagDuplicateDebounceTimer: null,
+  _checkAssetTagDuplicate() {
+    const tag = (this.editAssetTag ? this.editAssetTag.value : '').trim();
+    const errorEl = document.getElementById('editAssetTagError');
+
+    // Clear previous state
+    if (errorEl) { errorEl.classList.add('hidden'); errorEl.textContent = ''; }
+
+    if (!tag) return;
+
+    if (this._checkAssetTagDuplicateDebounceTimer) {
+      clearTimeout(this._checkAssetTagDuplicateDebounceTimer);
+    }
+
+    this._checkAssetTagDuplicateDebounceTimer = setTimeout(async () => {
+      try {
+        const excludeId = this.editComponentId ? this.editComponentId.value : '';
+        const params = new URLSearchParams({ tag });
+        if (excludeId) params.set('exclude_id', excludeId);
+
+        const res = await fetch('/api/assets/check-asset-tag?' + params.toString());
+        const data = await res.json();
+
+        if (data.exists && errorEl) {
+          errorEl.textContent = 'This asset tag is duplicated';
+          errorEl.classList.remove('hidden');
+        }
+      } catch (_) {
+        // Silent fail — backend still catches duplicates on submit
+      }
+    }, 400);
+  },
+
   async _saveComponent() {
     const id = this.editComponentId ? this.editComponentId.value : '';
 
@@ -585,6 +630,12 @@ const PositionsScreen = {
     if (serError && !serError.classList.contains('hidden')) {
       AppHelpers.toast(serError.textContent || 'Serial number error', 'error');
       if (this.editSerialNumber) this.editSerialNumber.focus();
+      return;
+    }
+    const tagError = document.getElementById('editAssetTagError');
+    if (tagError && !tagError.classList.contains('hidden')) {
+      AppHelpers.toast(tagError.textContent || 'Asset tag error', 'error');
+      if (this.editAssetTag) this.editAssetTag.focus();
       return;
     }
 
@@ -688,6 +739,14 @@ const PositionsScreen = {
         serError.classList.remove('hidden');
         if (this.editSerialNumber) this.editSerialNumber.focus();
         // Re-enable save button (don't hide in saveStatus)
+        if (this.saveComponentBtn) this.saveComponentBtn.disabled = false;
+        return;
+      }
+      // Show duplicate errors inline on the asset tag field
+      if ((err.message === 'This asset tag is duplicated') && tagError) {
+        tagError.textContent = 'This asset tag is duplicated';
+        tagError.classList.remove('hidden');
+        if (this.editAssetTag) this.editAssetTag.focus();
         if (this.saveComponentBtn) this.saveComponentBtn.disabled = false;
         return;
       }

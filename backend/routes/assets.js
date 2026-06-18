@@ -104,10 +104,34 @@ router.get('/check-serial', async (req, res) => {
   }
 });
 
+// GET /api/assets/check-asset-tag — lightweight duplicate check for asset tags
+router.get('/check-asset-tag', async (req, res) => {
+  try {
+    const { tag, exclude_id } = req.query;
+    if (!tag || !tag.trim()) {
+      return res.json({ exists: false });
+    }
+    let query;
+    let params;
+    if (exclude_id) {
+      query = 'SELECT id FROM position_components WHERE asset_tag = $1 AND asset_tag IS NOT NULL AND asset_tag != \'\' AND id != $2 LIMIT 1';
+      params = [tag.trim(), exclude_id];
+    } else {
+      query = 'SELECT id FROM position_components WHERE asset_tag = $1 AND asset_tag IS NOT NULL AND asset_tag != \'\' LIMIT 1';
+      params = [tag.trim()];
+    }
+    const { rows } = await db.query(query, params);
+    res.json({ exists: rows.length > 0 });
+  } catch (err) {
+    console.error('GET /assets/check-asset-tag error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/assets — create a new asset
 router.post('/', async (req, res) => {
   try {
-    const { location, area, position, box, asset_name, serial_number, assigned_person, asset_status, notes } = req.body;
+    const { location, area, position, box, asset_name, serial_number, asset_tag, assigned_person, asset_status, notes } = req.body;
 
     // Validate required fields
     if (!location || !area || !position || !asset_name || !serial_number) {
@@ -132,6 +156,17 @@ router.post('/', async (req, res) => {
       return res.status(409).json({ error: 'This serial number is duplicated' });
     }
 
+    // Duplicate asset tag check: global
+    if (asset_tag && asset_tag.trim()) {
+      const dupTagCheck = await db.query(
+        'SELECT id FROM position_components WHERE asset_tag = $1 AND asset_tag IS NOT NULL AND asset_tag != \'\'',
+        [asset_tag.trim()]
+      );
+      if (dupTagCheck.rows.length > 0) {
+        return res.status(409).json({ error: 'This asset tag is duplicated' });
+      }
+    }
+
     // Get or create the catch-all position for FK
     const positionId = await ensurePosition(location, area);
     if (!positionId) {
@@ -143,9 +178,9 @@ router.post('/', async (req, res) => {
     const result = await db.query(`
       INSERT INTO position_components
         (position_id, component_name, location, area, asset_name, box,
-         serial_number, assigned_person, asset_status, notes, status, sort_order, item_status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'complete', 0, 'IN USE')
-      RETURNING id, location, area, asset_name, box, serial_number,
+         serial_number, asset_tag, assigned_person, asset_status, notes, status, sort_order, item_status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'complete', 0, 'IN USE')
+      RETURNING id, location, area, asset_name, box, serial_number, asset_tag,
                 assigned_person, asset_status, notes, updated_at
     `, [
       positionId,
@@ -155,6 +190,7 @@ router.post('/', async (req, res) => {
       asset_name,
       box || null,
       serial_number,
+      asset_tag || null,
       assigned_person || null,
       asset_status || 'Active',
       notes || null
@@ -174,7 +210,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { position, box, asset_name, serial_number, assigned_person, asset_status, notes, location, area } = req.body;
+    const { position, box, asset_name, serial_number, asset_tag, assigned_person, asset_status, notes, location, area } = req.body;
 
     // Check asset exists
     const existing = await db.query('SELECT * FROM position_components WHERE id = $1', [id]);
@@ -201,6 +237,18 @@ router.put('/:id', async (req, res) => {
       }
     }
 
+    // Duplicate asset tag check: global (exclude self)
+    if (asset_tag && asset_tag.trim()) {
+      const dupTagCheck = await db.query(
+        `SELECT id FROM position_components
+         WHERE asset_tag = $1 AND asset_tag IS NOT NULL AND asset_tag != '' AND id != $2`,
+        [asset_tag.trim(), id]
+      );
+      if (dupTagCheck.rows.length > 0) {
+        return res.status(409).json({ error: 'This asset tag is duplicated' });
+      }
+    }
+
     const fields = {};
     if (location !== undefined) fields.location = location;
     if (area !== undefined) fields.area = area;
@@ -211,6 +259,7 @@ router.put('/:id', async (req, res) => {
     if (box !== undefined) fields.box = box || null;
     if (asset_name !== undefined) fields.asset_name = asset_name;
     if (serial_number !== undefined) fields.serial_number = serial_number;
+    if (asset_tag !== undefined) fields.asset_tag = asset_tag || null;
     if (assigned_person !== undefined) fields.assigned_person = assigned_person || null;
     if (asset_status !== undefined) fields.asset_status = asset_status;
     if (notes !== undefined) fields.notes = notes || null;
