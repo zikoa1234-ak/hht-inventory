@@ -340,6 +340,28 @@ router.put('/components/:id', async (req, res) => {
   // Always recompute status from latest serial + asset
   // We need the existing values if not being changed
   try {
+    // Duplicate serial number check (global, exclude self)
+    if (serial_number !== undefined && serial_number && serial_number.trim()) {
+      const dupSerial = await db.query(
+        'SELECT id FROM position_components WHERE serial_number = $1 AND serial_number IS NOT NULL AND serial_number != \'\' AND id != $2 LIMIT 1',
+        [serial_number.trim(), req.params.id]
+      );
+      if (dupSerial.rows.length > 0) {
+        return res.status(409).json({ error: 'Duplicate serial number or asset tag detected. Asset was not saved.' });
+      }
+    }
+
+    // Duplicate asset tag check (global, exclude self)
+    if (asset_tag !== undefined && asset_tag && asset_tag.trim()) {
+      const dupTag = await db.query(
+        'SELECT id FROM position_components WHERE asset_tag = $1 AND asset_tag IS NOT NULL AND asset_tag != \'\' AND id != $2 LIMIT 1',
+        [asset_tag.trim(), req.params.id]
+      );
+      if (dupTag.rows.length > 0) {
+        return res.status(409).json({ error: 'Duplicate serial number or asset tag detected. Asset was not saved.' });
+      }
+    }
+
     if (serial_number !== undefined || asset_tag !== undefined) {
       const existing = await db.query('SELECT serial_number, asset_tag FROM position_components WHERE id = $1', [req.params.id]);
       if (existing.rows.length === 0) return res.status(404).json({ error: 'Component not found' });

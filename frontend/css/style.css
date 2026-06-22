@@ -261,6 +261,7 @@ textarea.form-control { font-family: var(--font-family); resize: vertical; }
 .save-status.success { background: rgba(33,128,141,0.1); color: var(--success); }
 .save-status.error { background: rgba(192,21,47,0.1); color: var(--error); }
 .save-status.pending { background: rgba(168,75,47,0.1); color: var(--warning); }
+.field-error { margin-top: 4px; font-size: 12px; padding: 4px 8px; border-radius: var(--radius-sm); background: rgba(192,21,47,0.1); color: var(--error); }
 
 /* --- Sortable List (template components) --- */
 .sortable-list {

@@ -357,7 +357,7 @@ const AssetsScreen = {
         const data = await res.json();
 
         if (data.exists && this.afSerialError) {
-          this.afSerialError.textContent = 'This serial number is duplicated';
+          this.afSerialError.textContent = 'Duplicate serial number or asset tag detected. Asset was not saved.';
           this.afSerialError.classList.remove('hidden');
         }
       } catch (_) {
@@ -525,8 +525,8 @@ const AssetsScreen = {
         const errData = await res.json();
         const errMsg = errData.error || 'API error ' + res.status;
 
-        if (errMsg === 'This serial number is duplicated') {
-          this.afSerialError.textContent = 'This serial number is duplicated';
+        if (errMsg === 'Duplicate serial number or asset tag detected. Asset was not saved.') {
+          this.afSerialError.textContent = 'Duplicate serial number or asset tag detected. Asset was not saved.';
           this.afSerialError.classList.remove('hidden');
           if (this.afSerialNumber) this.afSerialNumber.focus();
         } else {

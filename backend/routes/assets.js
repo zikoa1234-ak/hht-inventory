@@ -154,7 +154,7 @@ router.post('/', async (req, res) => {
       [serial_number]
     );
     if (dupCheck.rows.length > 0) {
-      return res.status(409).json({ error: 'This serial number is duplicated' });
+      return res.status(409).json({ error: 'Duplicate serial number or asset tag detected. Asset was not saved.' });
     }
 
     // Duplicate asset tag check: global
@@ -164,7 +164,7 @@ router.post('/', async (req, res) => {
         [asset_tag.trim()]
       );
       if (dupTagCheck.rows.length > 0) {
-        return res.status(409).json({ error: 'This asset tag is duplicated' });
+        return res.status(409).json({ error: 'Duplicate serial number or asset tag detected. Asset was not saved.' });
       }
     }
 
@@ -200,7 +200,7 @@ router.post('/', async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (err) {
     if (err.code === '23505') {
-      return res.status(409).json({ error: 'This serial number is duplicated' });
+      return res.status(409).json({ error: 'Duplicate serial number or asset tag detected. Asset was not saved.' });
     }
     console.error('POST /assets error:', err);
     res.status(500).json({ error: err.message });
@@ -234,7 +234,7 @@ router.put('/:id', async (req, res) => {
         [serial_number, id]
       );
       if (dupCheck.rows.length > 0) {
-        return res.status(409).json({ error: 'This serial number is duplicated' });
+        return res.status(409).json({ error: 'Duplicate serial number or asset tag detected. Asset was not saved.' });
       }
     }
 
@@ -246,7 +246,7 @@ router.put('/:id', async (req, res) => {
         [asset_tag.trim(), id]
       );
       if (dupTagCheck.rows.length > 0) {
-        return res.status(409).json({ error: 'This asset tag is duplicated' });
+        return res.status(409).json({ error: 'Duplicate serial number or asset tag detected. Asset was not saved.' });
       }
     }
 
@@ -291,7 +291,7 @@ router.put('/:id', async (req, res) => {
     res.json(result.rows[0]);
   } catch (err) {
     if (err.code === '23505') {
-      return res.status(409).json({ error: 'This serial number is duplicated' });
+      return res.status(409).json({ error: 'Duplicate serial number or asset tag detected. Asset was not saved.' });
     }
     console.error('PUT /assets/:id error:', err);
     res.status(500).json({ error: err.message });

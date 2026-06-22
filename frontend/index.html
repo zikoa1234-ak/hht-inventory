@@ -245,10 +245,12 @@
             <div class="form-group">
               <label class="form-label">Serial Number</label>
               <input type="text" id="editSerialNumber" class="form-control input-scan" placeholder="Scan or type serial..." autofocus>
+              <div id="scanSerialError" class="field-error hidden">Duplicate serial number or asset tag detected. Asset was not saved.</div>
             </div>
             <div class="form-group">
               <label class="form-label">Asset Tag</label>
               <input type="text" id="editAssetTag" class="form-control input-scan" placeholder="Scan or type asset tag...">
+              <div id="scanAssetTagError" class="field-error hidden">Duplicate serial number or asset tag detected. Asset was not saved.</div>
             </div>
           </div>
 

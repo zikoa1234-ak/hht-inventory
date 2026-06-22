@@ -34,6 +34,8 @@ const PositionsScreen = {
     this.sumPartial = document.getElementById('sumPartial');
     this.sumMissing = document.getElementById('sumMissing');
     this.editItemStatus = document.getElementById('editItemStatus');
+    this.scanSerialError = document.getElementById('scanSerialError');
+    this.scanAssetTagError = document.getElementById('scanAssetTagError');
 
     // Guard against missing DOM elements
     if (!this.scanPanel || !this.componentTableBody) {
@@ -49,6 +51,8 @@ const PositionsScreen = {
           if (this.editAssetTag) this.editAssetTag.focus();
         }
       });
+      // Real-time duplicate check on serial number input
+      this.editSerialNumber.addEventListener('input', () => this._checkScanSerialDuplicate());
     }
     if (this.editAssetTag) {
       this.editAssetTag.addEventListener('keydown', (e) => {
@@ -58,6 +62,8 @@ const PositionsScreen = {
           this._saveComponent();
         }
       });
+      // Real-time duplicate check on asset tag input
+      this.editAssetTag.addEventListener('input', () => this._checkScanAssetTagDuplicate());
     }
 
     if (this.closeScanPanelBtn) {
@@ -463,6 +469,72 @@ const PositionsScreen = {
     }
   },
 
+  // Real-time duplicate serial number check (scan panel)
+  _checkScanSerialDebounceTimer: null,
+  _checkScanSerialDuplicate() {
+    const serial = (this.editSerialNumber ? this.editSerialNumber.value : '').trim();
+    if (this.scanSerialError) {
+      this.scanSerialError.classList.add('hidden');
+      this.scanSerialError.textContent = '';
+    }
+    if (!serial) return;
+
+    if (this._checkScanSerialDebounceTimer) {
+      clearTimeout(this._checkScanSerialDebounceTimer);
+    }
+
+    this._checkScanSerialDebounceTimer = setTimeout(async () => {
+      try {
+        const excludeId = this.editComponentId ? this.editComponentId.value : '';
+        const params = new URLSearchParams({ serial });
+        if (excludeId) params.set('exclude_id', excludeId);
+
+        const res = await fetch('/api/assets/check-serial?' + params.toString());
+        const data = await res.json();
+
+        if (data.exists && this.scanSerialError) {
+          this.scanSerialError.textContent = 'Duplicate serial number or asset tag detected. Asset was not saved.';
+          this.scanSerialError.classList.remove('hidden');
+        }
+      } catch (_) {
+        // Silent fail — backend catches duplicates on submit
+      }
+    }, 400);
+  },
+
+  // Real-time duplicate asset tag check (scan panel)
+  _checkScanAssetTagDebounceTimer: null,
+  _checkScanAssetTagDuplicate() {
+    const tag = (this.editAssetTag ? this.editAssetTag.value : '').trim();
+    if (this.scanAssetTagError) {
+      this.scanAssetTagError.classList.add('hidden');
+      this.scanAssetTagError.textContent = '';
+    }
+    if (!tag) return;
+
+    if (this._checkScanAssetTagDebounceTimer) {
+      clearTimeout(this._checkScanAssetTagDebounceTimer);
+    }
+
+    this._checkScanAssetTagDebounceTimer = setTimeout(async () => {
+      try {
+        const excludeId = this.editComponentId ? this.editComponentId.value : '';
+        const params = new URLSearchParams({ tag });
+        if (excludeId) params.set('exclude_id', excludeId);
+
+        const res = await fetch('/api/assets/check-asset-tag?' + params.toString());
+        const data = await res.json();
+
+        if (data.exists && this.scanAssetTagError) {
+          this.scanAssetTagError.textContent = 'Duplicate serial number or asset tag detected. Asset was not saved.';
+          this.scanAssetTagError.classList.remove('hidden');
+        }
+      } catch (_) {
+        // Silent fail — backend catches duplicates on submit
+      }
+    }, 400);
+  },
+
   // ===== SCAN PANEL =====
   _openScanPanel(comp) {
     if (!this.scanPanel || !comp) return;
@@ -492,6 +564,16 @@ const PositionsScreen = {
       this.saveStatus.className = 'save-status';
     }
 
+    // Clear duplicate errors
+    if (this.scanSerialError) {
+      this.scanSerialError.classList.add('hidden');
+      this.scanSerialError.textContent = '';
+    }
+    if (this.scanAssetTagError) {
+      this.scanAssetTagError.classList.add('hidden');
+      this.scanAssetTagError.textContent = '';
+    }
+
     // FIX: Update save button text for unsaved components
     if (this.saveComponentBtn) {
       this.saveComponentBtn.textContent = comp.id ? 'Save Component' : 'Create & Save';
@@ -515,6 +597,14 @@ const PositionsScreen = {
       this.saveStatus.textContent = '';
       this.saveStatus.className = 'save-status';
     }
+    if (this.scanSerialError) {
+      this.scanSerialError.classList.add('hidden');
+      this.scanSerialError.textContent = '';
+    }
+    if (this.scanAssetTagError) {
+      this.scanAssetTagError.classList.add('hidden');
+      this.scanAssetTagError.textContent = '';
+    }
   },
 
   _clearFields() {
@@ -530,6 +620,14 @@ const PositionsScreen = {
     if (this.saveStatus) {
       this.saveStatus.textContent = '';
       this.saveStatus.className = 'save-status';
+    }
+    if (this.scanSerialError) {
+      this.scanSerialError.classList.add('hidden');
+      this.scanSerialError.textContent = '';
+    }
+    if (this.scanAssetTagError) {
+      this.scanAssetTagError.classList.add('hidden');
+      this.scanAssetTagError.textContent = '';
     }
     if (this.saveComponentBtn) this.saveComponentBtn.textContent = 'Save Component';
     setTimeout(() => { if (this.editSerialNumber) this.editSerialNumber.focus(); }, 50);
@@ -632,6 +730,17 @@ const PositionsScreen = {
       AppHelpers.toast('Component saved', 'success');
     } catch (err) {
       this.log('Save error:', err.message);
+      // Detect duplicate error and show inline
+      if (err.message === 'Duplicate serial number or asset tag detected. Asset was not saved.') {
+        if (this.scanSerialError) {
+          this.scanSerialError.textContent = err.message;
+          this.scanSerialError.classList.remove('hidden');
+        }
+        if (this.scanAssetTagError) {
+          this.scanAssetTagError.textContent = err.message;
+          this.scanAssetTagError.classList.remove('hidden');
+        }
+      }
       if (this.saveStatus) {
         this.saveStatus.textContent = 'Error: ' + err.message;
         this.saveStatus.className = 'save-status error';
