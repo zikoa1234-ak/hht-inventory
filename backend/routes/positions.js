@@ -362,6 +362,14 @@ router.put('/components/:id', async (req, res) => {
       }
     }
 
+    // Validate asset tag prefix (must start with XS, case-insensitive)
+    if (asset_tag !== undefined && asset_tag && asset_tag.trim()) {
+      const at = asset_tag.trim();
+      if (!/^xs/i.test(at)) {
+        return res.status(400).json({ error: 'Asset tag must start with XS (e.g., XS12345 or xs12345)' });
+      }
+    }
+
     if (serial_number !== undefined || asset_tag !== undefined) {
       const existing = await db.query('SELECT serial_number, asset_tag FROM position_components WHERE id = $1', [req.params.id]);
       if (existing.rows.length === 0) return res.status(404).json({ error: 'Component not found' });

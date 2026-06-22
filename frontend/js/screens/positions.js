@@ -512,6 +512,13 @@ const PositionsScreen = {
     }
     if (!tag) return;
 
+    // Validate asset tag starts with XS (case-insensitive)
+    if (!/^xs/i.test(tag)) {
+      this.scanAssetTagError.textContent = 'Asset tag must start with XS (e.g., XS12345 or xs12345)';
+      this.scanAssetTagError.classList.remove('hidden');
+      return;
+    }
+
     if (this._checkScanAssetTagDebounceTimer) {
       clearTimeout(this._checkScanAssetTagDebounceTimer);
     }
@@ -669,6 +676,19 @@ const PositionsScreen = {
       }
       AppHelpers.toast('Please select a valid assigned person', 'error');
       if (this.editAssignedPerson) this.editAssignedPerson.focus();
+      if (this.saveComponentBtn) this.saveComponentBtn.disabled = false;
+      return;
+    }
+
+    // Validate asset tag starts with XS (case-insensitive)
+    const assetTagVal = this.editAssetTag ? this.editAssetTag.value.trim() : '';
+    if (assetTagVal && !/^xs/i.test(assetTagVal)) {
+      if (this.scanAssetTagError) {
+        this.scanAssetTagError.textContent = 'Asset tag must start with XS (e.g., XS12345 or xs12345)';
+        this.scanAssetTagError.classList.remove('hidden');
+      }
+      AppHelpers.toast('Asset tag must start with XS', 'error');
+      if (this.editAssetTag) this.editAssetTag.focus();
       if (this.saveComponentBtn) this.saveComponentBtn.disabled = false;
       return;
     }

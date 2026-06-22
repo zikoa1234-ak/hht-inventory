@@ -6,6 +6,15 @@ const router = Router();
 // Allowed status values for the new asset workflow
 const ALLOWED_ASSET_STATUSES = ['Active', 'In Repair', 'In Stock', 'Retired'];
 
+// Helper: validate asset tag starts with XS (case-insensitive)
+function validateAssetTag(tag) {
+  if (!tag || !tag.trim()) return null; // null/empty is ok
+  if (!/^xs/i.test(tag.trim())) {
+    return 'Asset tag must start with XS (e.g., XS12345 or xs12345)';
+  }
+  return null;
+}
+
 // Helper: get or create a catch-all position for a location+area combo
 async function ensurePosition(location, area) {
   // Map area name to template name (they're the same)
@@ -168,6 +177,12 @@ router.post('/', async (req, res) => {
       }
     }
 
+    // Validate asset tag prefix (must start with XS)
+    const tagError = validateAssetTag(asset_tag);
+    if (tagError) {
+      return res.status(400).json({ error: tagError });
+    }
+
     // Get or create the catch-all position for FK
     const positionId = await ensurePosition(location, area);
     if (!positionId) {
@@ -247,6 +262,14 @@ router.put('/:id', async (req, res) => {
       );
       if (dupTagCheck.rows.length > 0) {
         return res.status(409).json({ error: 'Duplicate serial number or asset tag detected. Asset was not saved.' });
+      }
+    }
+
+    // Validate asset tag prefix (must start with XS)
+    if (asset_tag !== undefined) {
+      const tagError = validateAssetTag(asset_tag);
+      if (tagError) {
+        return res.status(400).json({ error: tagError });
       }
     }
 
