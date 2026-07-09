@@ -156,14 +156,17 @@
               <div id="importResult"></div>
             </div>
 
-            <!-- Assigned Users -->
+            <!-- Assigned People (manual add) -->
             <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px;">
-              <h4 style="margin:0 0 8px 0;font-size:0.9rem;">Assigned Users</h4>
-              <p class="text-secondary text-sm" style="margin:0 0 8px 0;">Toggle which users can access this location.</p>
-              <div id="siteUsersList"><div class="empty-state-sm">Loading users...</div></div>
+              <h4 style="margin:0 0 8px 0;font-size:0.9rem;">Assigned People</h4>
+              <div class="inline-form" style="margin-bottom:8px;">
+                <input type="text" id="addPersonToSiteInput" class="form-control" list="assignedPeopleDatalist" placeholder="Type person name">
+                <datalist id="assignedPeopleDatalist"></datalist>
+                <button class="btn btn--sm btn--primary" id="addPersonToSiteBtn">+ Add</button>
+              </div>
+              <div id="sitePeopleList"><div class="empty-state-sm">No people assigned.</div></div>
             </div>
           </div>
-        </div>
       </div>
     </div>
   </div>
@@ -189,6 +192,7 @@
         await this._loadTemplates();
         populatePeopleSelect(document.getElementById('newLocationPerson'));
         populatePeopleSelect(document.getElementById('editLocationPerson'));
+        populatePeopleDatalist('assignedPeopleDatalist');
       },
 
       async _loadTemplates() {
@@ -238,7 +242,7 @@
           if (this.selectedSiteId) {
             document.getElementById('positionsPanel').classList.remove('hidden');
             this._loadPositions();
-            this._loadSiteUsers();
+            this._loadSitePeople();
           } else {
             document.getElementById('positionsPanel').classList.add('hidden');
           }
@@ -284,6 +288,12 @@
         });
 
         document.getElementById('importBtn').addEventListener('click', () => this._importPositions());
+
+        // Add person to site
+        document.getElementById('addPersonToSiteBtn').addEventListener('click', () => this._addPersonToSite());
+        document.getElementById('addPersonToSiteInput').addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') this._addPersonToSite();
+        });
       },
 
       async _loadLocations() {
@@ -464,53 +474,58 @@
         }).catch(err => this._toast(err.message, 'error'));
       },
 
-      // ===== SITE USER ASSIGNMENT =====
+      // ===== SITE PEOPLE (MANUAL ADD) =====
 
-      async _loadSiteUsers() {
-        const list = document.getElementById('siteUsersList');
+      async _loadSitePeople() {
+        const list = document.getElementById('sitePeopleList');
         const token = AUTH.getToken();
         const headers = { 'Authorization': 'Bearer ' + (token || '') };
         try {
-          const [usersRes, assignedRes] = await Promise.all([
-            fetch('/api/admin/users', { headers }),
-            fetch('/api/sites/' + this.selectedSiteId + '/users', { headers }),
-          ]);
-          const users = await usersRes.json();
-          const assignedIds = new Set(await assignedRes.json());
-
-          const nonAdmin = users.filter(u => u.role !== 'admin');
-          if (nonAdmin.length === 0) {
-            list.innerHTML = '<div class="empty-state-sm">No regular users to assign.</div>';
+          const res = await fetch('/api/sites/' + this.selectedSiteId + '/people', { headers });
+          const people = await res.json();
+          if (people.length === 0) {
+            list.innerHTML = '<div class="empty-state-sm">No people assigned.</div>';
             return;
           }
-
-          list.innerHTML = nonAdmin.map(u => {
-            const has = assignedIds.has(u.id);
-            return '<div class="item-row">' +
-              '<div><span class="name">' + esc(u.username) + '</span></div>' +
-              '<button class="btn btn--sm ' + (has ? 'btn--primary' : 'btn--outline') + '" ' +
-                'onclick="LOCATIONS._toggleUser(' + u.id + ',' + (!has) + ')">' +
-                (has ? 'Assigned' : 'Assign') +
-              '</button>' +
-            '</div>';
-          }).join('');
+          list.innerHTML = people.map(p =>
+            '<div class="item-row">' +
+              '<div><span class="name">' + esc(p.person_name) + '</span></div>' +
+              '<button class="btn btn--sm btn--danger" onclick="LOCATIONS._removePersonFromSite(' + this.selectedSiteId + ',\'' + esc(p.person_name) + '\')">Remove</button>' +
+            '</div>'
+          ).join('');
         } catch (err) {
           list.innerHTML = '<div class="empty-state-sm">Error: ' + esc(err.message) + '</div>';
         }
       },
 
-      async _toggleUser(userId, assign) {
-        try {
-          const token = AUTH.getToken();
-          const res = await fetch('/api/sites/' + this.selectedSiteId + '/users', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (token || '') },
-            body: JSON.stringify({ user_id: userId, action: assign ? 'add' : 'remove' }),
-          });
-          if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
-          this._toast('User ' + (assign ? 'assigned to' : 'removed from') + ' location', 'success');
-          this._loadSiteUsers();
-        } catch (err) { this._toast(err.message, 'error'); }
+      _addPersonToSite() {
+        const input = document.getElementById('addPersonToSiteInput');
+        const name = input.value.trim().toUpperCase();
+        if (!name) { this._toast('Enter a person name', 'error'); return; }
+        const token = AUTH.getToken();
+        fetch('/api/sites/' + this.selectedSiteId + '/people', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (token || '') },
+          body: JSON.stringify({ person_name: name }),
+        }).then(r => {
+          if (!r.ok) return r.json().then(d => { throw new Error(d.error); });
+          input.value = '';
+          this._toast('Person added', 'success');
+          this._loadSitePeople();
+        }).catch(err => this._toast(err.message, 'error'));
+      },
+
+      _removePersonFromSite(siteId, personName) {
+        if (!confirm('Remove "' + personName + '" from this location?')) return;
+        const token = AUTH.getToken();
+        fetch('/api/sites/' + siteId + '/people/' + encodeURIComponent(personName), {
+          method: 'DELETE',
+          headers: { 'Authorization': 'Bearer ' + (token || '') },
+        }).then(r => {
+          if (!r.ok) return r.json().then(d => { throw new Error(d.error); });
+          this._toast('Person removed', 'success');
+          this._loadSitePeople();
+        }).catch(err => this._toast(err.message, 'error'));
       },
 
       // ===== TXT IMPORT =====

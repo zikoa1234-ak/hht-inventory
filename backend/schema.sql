@@ -118,3 +118,13 @@ CREATE INDEX IF NOT EXISTS idx_positions_site_id               ON positions(site
 CREATE INDEX IF NOT EXISTS idx_position_components_position_id ON position_components(position_id);
 CREATE INDEX IF NOT EXISTS idx_scan_sessions_position_id       ON scan_sessions(position_id);
 CREATE INDEX IF NOT EXISTS idx_component_history_component_id  ON component_history(component_id);
+
+-- People assigned to sites (manual, not auth users)
+CREATE TABLE IF NOT EXISTS site_people (
+  id            SERIAL PRIMARY KEY,
+  site_id       INTEGER      NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+  person_name   VARCHAR(255) NOT NULL,
+  assigned_by   INTEGER      REFERENCES users(id),
+  created_at    TIMESTAMP    NOT NULL DEFAULT NOW(),
+  UNIQUE(site_id, person_name)
+);

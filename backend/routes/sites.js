@@ -89,43 +89,56 @@ router.delete('/:id', requireAuth, requireRole('admin'), async (req, res) => {
   }
 });
 
-// ── Site user assignment ─────────────────────────────────────
+// ── Site people (manual person assignment) ────────────────────
 
-// GET /api/sites/:id/users — list users assigned to this site
-router.get('/:id/users', requireAuth, requireRole('admin'), async (req, res) => {
+// GET /api/sites/:id/people — list people assigned to this site
+router.get('/:id/people', requireAuth, requireRole('admin'), async (req, res) => {
   try {
     const { rows } = await db.query(
-      'SELECT user_id FROM user_sites WHERE site_id = $1',
+      'SELECT id, person_name, created_at FROM site_people WHERE site_id = $1 ORDER BY person_name',
       [req.params.id]
     );
-    res.json(rows.map(r => r.user_id));
+    res.json(rows);
   } catch (err) {
-    console.error('GET /sites/:id/users error:', err);
+    console.error('GET /sites/:id/people error:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST /api/sites/:id/users — add or remove a user from this site
-router.post('/:id/users', requireAuth, requireRole('admin'), async (req, res) => {
-  const { user_id, action } = req.body;
-  if (!user_id || !['add', 'remove'].includes(action)) {
-    return res.status(400).json({ error: 'user_id and action ("add"/"remove") are required' });
+// POST /api/sites/:id/people — add a person to this site
+router.post('/:id/people', requireAuth, requireRole('admin'), async (req, res) => {
+  const { person_name } = req.body;
+  if (!person_name || !person_name.trim()) {
+    return res.status(400).json({ error: 'person_name is required' });
   }
   try {
-    if (action === 'add') {
-      await db.query(
-        'INSERT INTO user_sites (user_id, site_id, assigned_by) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
-        [user_id, req.params.id, req.user.id]
-      );
-    } else {
-      await db.query(
-        'DELETE FROM user_sites WHERE user_id = $1 AND site_id = $2',
-        [user_id, req.params.id]
-      );
+    const result = await db.query(
+      'INSERT INTO site_people (site_id, person_name, assigned_by) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING RETURNING id',
+      [req.params.id, person_name.trim().toUpperCase(), req.user.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(409).json({ error: 'Person already assigned to this site' });
     }
-    res.json({ message: `User ${action === 'add' ? 'added to' : 'removed from'} site` });
+    res.status(201).json(result.rows[0]);
   } catch (err) {
-    console.error('POST /sites/:id/users error:', err);
+    console.error('POST /sites/:id/people error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/sites/:id/people/:personName — remove a person from this site
+router.delete('/:id/people/:personName', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const result = await db.query(
+      'DELETE FROM site_people WHERE site_id = $1 AND person_name = $2 RETURNING id',
+      [req.params.id, req.params.personName]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Person not found on this site' });
+    }
+    res.json({ message: 'Person removed' });
+  } catch (err) {
+    console.error('DELETE /sites/:id/people/:personName error:', err);
     res.status(500).json({ error: err.message });
   }
 });
