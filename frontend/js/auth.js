@@ -103,10 +103,13 @@ const AUTH = {
   },
 
   /** Show the login modal */
-  showLoginModal() {
+  showLoginModal(force) {
     const overlay = document.getElementById('loginOverlay');
     if (overlay) {
       overlay.classList.remove('hidden');
+      // Hide close button when forced (can't dismiss)
+      const closeBtns = overlay.querySelectorAll('.modal-close-btn');
+      closeBtns.forEach(function (btn) { btn.style.display = force ? 'none' : ''; });
       const input = document.getElementById('loginUsername');
       if (input) setTimeout(() => input.focus(), 100);
     }
@@ -118,6 +121,14 @@ const AUTH = {
     if (overlay) overlay.classList.add('hidden');
   },
 };
+
+/** Get auth headers object for raw fetch calls */
+function authHeaders() {
+  const token = AUTH && AUTH.getToken ? AUTH.getToken() : null;
+  const headers = {};
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  return headers;
+}
 
 // HTML escaping helper (used by admin pages that don't load app.js)
 const esc = (s) => {

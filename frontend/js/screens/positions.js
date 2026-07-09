@@ -489,7 +489,7 @@ const PositionsScreen = {
         const params = new URLSearchParams({ serial });
         if (excludeId) params.set('exclude_id', excludeId);
 
-        const res = await fetch('/api/assets/check-serial?' + params.toString());
+        const res = await fetch('/api/assets/check-serial?' + params.toString(), { headers: authHeaders() });
         const data = await res.json();
 
         if (data.exists && this.scanSerialError) {
@@ -529,7 +529,7 @@ const PositionsScreen = {
         const params = new URLSearchParams({ tag });
         if (excludeId) params.set('exclude_id', excludeId);
 
-        const res = await fetch('/api/assets/check-asset-tag?' + params.toString());
+        const res = await fetch('/api/assets/check-asset-tag?' + params.toString(), { headers: authHeaders() });
         const data = await res.json();
 
         if (data.exists && this.scanAssetTagError) {

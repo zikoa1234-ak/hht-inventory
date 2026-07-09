@@ -45,18 +45,16 @@ app.use('/api/admin', require('./routes/admin'));
 // API Routes — some are public, some protected by auth middleware
 const { requireAuth, requireRole } = require('./middleware/auth');
 
-// Public routes (read-only access for viewing data)
-app.use('/api/sites', require('./routes/sites'));
-app.use('/api/templates', require('./routes/templates'));
-app.use('/api/positions', require('./routes/positions'));
-app.use('/api/models', require('./routes/models'));
-app.use('/api/export', require('./routes/export'));
-app.use('/api/assets', require('./routes/assets'));
-
-// Sessions require auth
+// All API routes require authentication
+app.use('/api/sites', requireAuth, require('./routes/sites'));
+app.use('/api/templates', requireAuth, require('./routes/templates'));
+app.use('/api/positions', requireAuth, require('./routes/positions'));
+app.use('/api/models', requireAuth, require('./routes/models'));
+app.use('/api/export', requireAuth, require('./routes/export'));
+app.use('/api/assets', requireAuth, require('./routes/assets'));
 app.use('/api/sessions', requireAuth, require('./routes/sessions'));
 
-// Health check
+// Health check — public
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
 // Serve static frontend in production

@@ -169,7 +169,10 @@
 
       async _loadTemplates() {
         try {
-          const res = await fetch('/api/templates');
+          const token = AUTH.getToken();
+          const headers = {};
+          if (token) headers['Authorization'] = 'Bearer ' + token;
+          const res = await fetch('/api/templates', { headers });
           const templates = await res.json();
           const opts = templates.map(t => '<option value="' + t.id + '">' + esc(t.name) + '</option>').join('');
           document.getElementById('createPositionTemplate').innerHTML = '<option value="">-- Select Template --</option>' + opts;
@@ -261,7 +264,10 @@
       async _loadLocations() {
         const list = document.getElementById('locationList');
         try {
-          const res = await fetch('/api/sites');
+          const token = AUTH.getToken();
+          const headers = {};
+          if (token) headers['Authorization'] = 'Bearer ' + token;
+          const res = await fetch('/api/sites', { headers });
           const sites = await res.json();
 
           list.innerHTML = sites.map(s => {
@@ -282,7 +288,10 @@
       async _loadPositionLocationSelect() {
         const sel = document.getElementById('positionLocationSelect');
         try {
-          const res = await fetch('/api/sites');
+          const token = AUTH.getToken();
+          const headers = {};
+          if (token) headers['Authorization'] = 'Bearer ' + token;
+          const res = await fetch('/api/sites', { headers });
           const sites = await res.json();
           sel.innerHTML = '<option value="">-- Select a location --</option>' +
             sites.map(s => '<option value="' + s.id + '">' + esc(s.name) + '</option>').join('');
@@ -362,12 +371,15 @@
         if (!this.selectedSiteId) return;
         const list = document.getElementById('positionList');
         const title = document.getElementById('selectedLocationTitle');
-        const sites = await (await fetch('/api/sites')).json();
+        const token = AUTH.getToken();
+        const headers = {};
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        const sites = await (await fetch('/api/sites', { headers })).json();
         const site = sites.find(s => String(s.id) === String(this.selectedSiteId));
         title.textContent = site ? site.name + ' — Positions' : 'Positions';
 
         try {
-          const res = await fetch('/api/positions');
+          const res = await fetch('/api/positions', { headers });
           const all = await res.json();
           this.positionsCache = all.filter(p => String(p.site_id) === String(this.selectedSiteId));
 

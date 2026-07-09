@@ -10,12 +10,9 @@ const api = {
       method,
       headers: { 'Content-Type': 'application/json' },
     };
-
-    // Add auth token if logged in
-    const token = AUTH.getToken();
-    if (token) {
-      opts.headers['Authorization'] = 'Bearer ' + token;
-    }
+    // Attach auth token if logged in
+    const token = AUTH && AUTH.getToken ? AUTH.getToken() : null;
+    if (token) opts.headers['Authorization'] = 'Bearer ' + token;
 
     if (body) opts.body = JSON.stringify(body);
     const res = await fetch(`${API_BASE}/api${path}`, opts);

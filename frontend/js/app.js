@@ -51,6 +51,16 @@ var App = {
   init: async function () {
     this.log('Initializing...');
 
+    // ---- Force login if not authenticated ----
+    if (!AUTH.isLoggedIn()) {
+      this._forceLogin = true;
+      // Show login modal immediately, blocking the app
+      AUTH.showLoginModal(true);
+      // Don't load any data — user must log in first
+    } else {
+      this._forceLogin = false;
+    }
+
     // Pre-select template from URL hash if present
     this.pendingPositionId = null;
 
@@ -88,11 +98,11 @@ var App = {
       });
     }
 
-    // Close login modal on overlay click
+    // Close login modal on overlay click (but not when forced)
     const loginOverlay = document.getElementById('loginOverlay');
     if (loginOverlay) {
       loginOverlay.addEventListener('click', function (e) {
-        if (e.target === loginOverlay) AUTH.hideLoginModal();
+        if (e.target === loginOverlay && !App._forceLogin) AUTH.hideLoginModal();
       });
     }
 
@@ -193,18 +203,22 @@ var App = {
       });
     }
 
-    // ---- Load initial data ----
-    await this.refreshDashboard();
+    // ---- Load initial data (only if authenticated) ----
+    if (!this._forceLogin) {
+      await this.refreshDashboard();
+    }
     this.log('Ready');
 
     // Handle pending position from URL hash
-    var hash = window.location.hash;
-    if (hash && hash.startsWith('#position-')) {
-      var pid = parseInt(hash.replace('#position-', ''));
-      if (pid) {
-        this.log('Opening position from hash:', pid);
-        if (typeof PositionsScreen !== 'undefined') {
-          PositionsScreen.openPosition(pid);
+    if (!this._forceLogin) {
+      var hash = window.location.hash;
+      if (hash && hash.startsWith('#position-')) {
+        var pid = parseInt(hash.replace('#position-', ''));
+        if (pid) {
+          this.log('Opening position from hash:', pid);
+          if (typeof PositionsScreen !== 'undefined') {
+            PositionsScreen.openPosition(pid);
+          }
         }
       }
     }
@@ -228,6 +242,7 @@ var App = {
       document.getElementById('loginPassword').value = '';
       if (errorEl) errorEl.classList.add('hidden');
       AppHelpers.toast('Logged in as ' + username, 'success');
+      this._forceLogin = false;
       await this.refreshDashboard();
     } catch (err) {
       if (errorEl) { errorEl.textContent = err.message; errorEl.classList.remove('hidden'); }

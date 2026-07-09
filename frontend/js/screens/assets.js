@@ -243,7 +243,7 @@ const AssetsScreen = {
       const status = this.assetFilterStatus ? this.assetFilterStatus.value : '';
       if (status) params.set('asset_status', status);
 
-      const res = await fetch('/api/assets?' + params.toString());
+      const res = await fetch('/api/assets?' + params.toString(), { headers: authHeaders() });
       this.assets = await res.json();
       this._renderAssets();
     } catch (err) {
@@ -318,7 +318,7 @@ const AssetsScreen = {
         const id = btn.dataset.id;
         AppHelpers.confirm('Delete Asset?', 'This will permanently remove this asset record.', async () => {
           try {
-            await fetch('/api/assets/' + id, { method: 'DELETE' });
+            await fetch('/api/assets/' + id, { method: 'DELETE', headers: authHeaders() });
             AppHelpers.toast('Asset deleted', 'success');
             this._loadAssets();
           } catch (err) {
@@ -353,7 +353,7 @@ const AssetsScreen = {
         const params = new URLSearchParams({ serial });
         if (excludeId) params.set('exclude_id', excludeId);
 
-        const res = await fetch('/api/assets/check-serial?' + params.toString());
+        const res = await fetch('/api/assets/check-serial?' + params.toString(), { headers: authHeaders() });
         const data = await res.json();
 
         if (data.exists && this.afSerialError) {
@@ -507,16 +507,17 @@ const AssetsScreen = {
 
     try {
       let res;
+      const ah = authHeaders();
       if (isEdit) {
         res = await fetch('/api/assets/' + this.afAssetId.value, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...ah },
           body: JSON.stringify(data),
         });
       } else {
         res = await fetch('/api/assets', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...ah },
           body: JSON.stringify(data),
         });
       }
