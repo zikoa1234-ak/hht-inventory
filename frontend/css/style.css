@@ -337,3 +337,28 @@ textarea.form-control { font-family: var(--font-family); resize: vertical; }
 }
 .inline-edit:hover { border-color: var(--border); }
 .inline-edit:focus { outline: none; border-color: var(--primary); background: var(--bg); }
+
+/* --- Auth / Admin UI --- */
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+.user-badge {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  padding: 2px 8px;
+  background: var(--color-cream-100);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+.btn--danger {
+  background: var(--error);
+  color: #fff;
+  border: 1px solid var(--error);
+}
+.btn--danger:hover {
+  opacity: 0.9;
+}

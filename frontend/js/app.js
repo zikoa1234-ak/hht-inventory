@@ -60,6 +60,48 @@ var App = {
     // Pre-select template from URL hash if present
     this.pendingPositionId = null;
 
+    // ---- Auth events ----
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const adminLink = document.getElementById('adminLink');
+    const loginSubmitBtn = document.getElementById('loginSubmitBtn');
+
+    if (loginBtn) {
+      loginBtn.addEventListener('click', function () { AUTH.showLoginModal(); });
+    }
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', function () { AUTH.logout(); });
+    }
+    if (adminLink) {
+      adminLink.addEventListener('click', function () {
+        window.location.href = '/admin.html';
+      });
+    }
+    if (loginSubmitBtn) {
+      loginSubmitBtn.addEventListener('click', function () { App._handleLogin(); });
+    }
+    // Enter key in login form
+    const loginPassword = document.getElementById('loginPassword');
+    if (loginPassword) {
+      loginPassword.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); App._handleLogin(); }
+      });
+    }
+    const loginUsername = document.getElementById('loginUsername');
+    if (loginUsername) {
+      loginUsername.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); loginPassword.focus(); }
+      });
+    }
+
+    // Close login modal on overlay click
+    const loginOverlay = document.getElementById('loginOverlay');
+    if (loginOverlay) {
+      loginOverlay.addEventListener('click', function (e) {
+        if (e.target === loginOverlay) AUTH.hideLoginModal();
+      });
+    }
+
     // ---- Navigation ----
     document.querySelectorAll('[data-screen]').forEach(function (el) {
       el.addEventListener('click', function () {
@@ -171,6 +213,30 @@ var App = {
           PositionsScreen.openPosition(pid);
         }
       }
+    }
+  },
+
+  // ===== AUTH =====
+  _handleLogin: async function () {
+    var username = document.getElementById('loginUsername').value.trim();
+    var password = document.getElementById('loginPassword').value;
+    var errorEl = document.getElementById('loginError');
+
+    if (!username || !password) {
+      if (errorEl) { errorEl.textContent = 'Username and password are required'; errorEl.classList.remove('hidden'); }
+      return;
+    }
+
+    try {
+      await AUTH.login(username, password);
+      AUTH.hideLoginModal();
+      document.getElementById('loginUsername').value = '';
+      document.getElementById('loginPassword').value = '';
+      if (errorEl) errorEl.classList.add('hidden');
+      AppHelpers.toast('Logged in as ' + username, 'success');
+      await this.refreshDashboard();
+    } catch (err) {
+      if (errorEl) { errorEl.textContent = err.message; errorEl.classList.remove('hidden'); }
     }
   },
 

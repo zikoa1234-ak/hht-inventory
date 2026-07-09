@@ -8,14 +8,18 @@
     "dev": "node --watch server.js",
     "migrate": "psql \"$DATABASE_URL\" -f schema.sql",
     "seed": "psql \"$DATABASE_URL\" -f seed.sql",
-    "setup": "npm run migrate && npm run seed"
+    "seed:admin": "node seed-admin.js",
+    "setup": "npm run migrate && npm run seed && npm run seed:admin"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
+    "express-rate-limit": "^8.5.2",
+    "helmet": "^8.2.0",
+    "jsonwebtoken": "^9.0.3",
     "pg": "^8.13.0"
   },
-  "devDependencies": {},
   "private": true
 }

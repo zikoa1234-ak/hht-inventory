@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HHT Inventory — Admin Dashboard</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .admin-container { max-width: 1200px; margin: 0 auto; padding: 16px; }
+    .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .admin-header h1 { font-size: 1.4rem; margin: 0; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .stat-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; text-align: center; }
+    .stat-card .stat-value { font-size: 2rem; font-weight: 700; color: var(--primary); }
+    .stat-card .stat-label { font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px; }
+    .admin-section { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    .admin-section h2 { font-size: 1.1rem; margin: 0 0 12px 0; }
+    .user-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .user-row:last-child { border-bottom: none; }
+    .user-info { display: flex; flex-direction: column; }
+    .user-info .username { font-weight: 600; }
+    .user-info .meta { font-size: 0.8rem; color: var(--text-secondary); }
+    .role-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+    .role-badge.admin { background: #e3f2fd; color: #1565c0; }
+    .role-badge.user { background: #f3e5f5; color: #7b1fa2; }
+    .activity-table { width: 100%; font-size: 0.85rem; }
+    .activity-table th { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+    .activity-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+    .loading-spinner { text-align: center; padding: 40px; color: var(--text-secondary); }
+    .status-breakdown { display: flex; gap: 16px; margin-top: 8px; }
+    .status-bar-item { flex: 1; text-align: center; padding: 8px; border-radius: 6px; font-size: 0.85rem; }
+    .status-bar-item.complete { background: #e8f5e9; color: #2e7d32; }
+    .status-bar-item.partial { background: #fff3e0; color: #e65100; }
+    .status-bar-item.missing { background: #fbe9e7; color: #c62828; }
+    .admin-actions { display: flex; gap: 8px; }
+    .btn-sm { padding: 4px 10px; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <nav class="top-nav">
+      <a href="/" class="nav-btn" title="Back to App">&#9664;</a>
+      <span class="nav-title">Admin Dashboard</span>
+      <div class="nav-right">
+        <span id="adminUserBadge" class="user-badge"></span>
+        <button class="nav-btn" id="adminLogoutBtn" title="Logout">&#128682;</button>
+      </div>
+    </nav>
+
+    <div class="admin-container">
+      <!-- Stats Grid -->
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card"><div class="stat-value">-</div><div class="stat-label">Sites</div></div>
+        <div class="stat-card"><div class="stat-value">-</div><div class="stat-label">Templates</div></div>
+        <div class="stat-card"><div class="stat-value">-</div><div class="stat-label">Positions</div></div>
+        <div class="stat-card"><div class="stat-value">-</div><div class="stat-label">Components</div></div>
+        <div class="stat-card"><div class="stat-value">-</div><div class="stat-label">Users</div></div>
+        <div class="stat-card"><div class="stat-value">-</div><div class="stat-label">Sessions</div></div>
+        <div class="stat-card"><div class="stat-value">-</div><div class="stat-label">Models</div></div>
+      </div>
+
+      <!-- Status Breakdown -->
+      <div class="admin-section">
+        <h2>Component Status</h2>
+        <div class="status-breakdown" id="statusBreakdown">
+          <div class="status-bar-item complete">Complete: -</div>
+          <div class="status-bar-item partial">Partial: -</div>
+          <div class="status-bar-item missing">Missing: -</div>
+        </div>
+      </div>
+
+      <!-- User Management -->
+      <div class="admin-section">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <h2 style="margin:0;">User Management</h2>
+          <button class="btn btn--sm btn--primary" id="addUserBtn">+ Add User</button>
+        </div>
+        <div id="userList"><div class="loading-spinner">Loading users...</div></div>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="admin-section">
+        <h2>Recent Activity</h2>
+        <div class="table-wrap">
+          <table class="activity-table" id="activityTable">
+            <thead>
+              <tr>
+                <th>Site</th>
+                <th>Position</th>
+                <th>Component</th>
+                <th>Serial</th>
+                <th>Asset Tag</th>
+                <th>Updated By</th>
+                <th>Updated At</th>
+              </tr>
+            </thead>
+            <tbody id="activityBody">
+              <tr><td colspan="7" class="empty-state">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add User Modal -->
+  <div id="addUserOverlay" class="modal-overlay hidden">
+    <div class="modal-panel modal-sm">
+      <div class="modal-header">
+        <h3>Add User</h3>
+        <button class="btn btn--sm btn--outline modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Username</label>
+          <input type="text" id="addUserUsername" class="form-control" placeholder="Username">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" id="addUserPassword" class="form-control" placeholder="Password (min 6 chars)">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Role</label>
+          <select id="addUserRole" class="form-control">
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div id="addUserError" class="field-error hidden"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn--outline modal-close-btn">Cancel</button>
+        <button class="btn btn--primary" id="addUserSubmitBtn">Create User</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    const ADMIN = {
+      async init() {
+        // Check auth
+        if (!AUTH.isLoggedIn()) {
+          window.location.href = '/';
+          return;
+        }
+
+        const user = AUTH.getUser();
+        document.getElementById('adminUserBadge').textContent = user.username + ' [Admin]';
+
+        // Logout
+        document.getElementById('adminLogoutBtn').addEventListener('click', () => AUTH.logout());
+
+        // Back button
+        // Add user modal
+        this._setupAddUserModal();
+
+        // Load data
+        await this._loadStats();
+        await this._loadUsers();
+        await this._loadActivity();
+      },
+
+      _setupAddUserModal() {
+        const overlay = document.getElementById('addUserOverlay');
+        const submitBtn = document.getElementById('addUserSubmitBtn');
+
+        overlay.querySelectorAll('.modal-close-btn').forEach(btn => {
+          btn.addEventListener('click', () => overlay.classList.add('hidden'));
+        });
+        overlay.addEventListener('click', (e) => {
+          if (e.target === overlay) overlay.classList.add('hidden');
+        });
+
+        document.getElementById('addUserBtn').addEventListener('click', () => {
+          document.getElementById('addUserUsername').value = '';
+          document.getElementById('addUserPassword').value = '';
+          document.getElementById('addUserRole').value = 'user';
+          document.getElementById('addUserError').classList.add('hidden');
+          overlay.classList.remove('hidden');
+        });
+
+        submitBtn.addEventListener('click', () => this._createUser());
+      },
+
+      async _createUser() {
+        const username = document.getElementById('addUserUsername').value.trim();
+        const password = document.getElementById('addUserPassword').value;
+        const role = document.getElementById('addUserRole').value;
+        const errorEl = document.getElementById('addUserError');
+
+        if (!username || !password) {
+          errorEl.textContent = 'Username and password are required';
+          errorEl.classList.remove('hidden');
+          return;
+        }
+
+        try {
+          const token = AUTH.getToken();
+          const res = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (token || '') },
+            body: JSON.stringify({ username, password, role }),
+          });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || 'Failed to create user');
+          }
+          document.getElementById('addUserOverlay').classList.add('hidden');
+          this._loadUsers();
+          this._showToast('User "' + username + '" created', 'success');
+        } catch (err) {
+          errorEl.textContent = err.message;
+          errorEl.classList.remove('hidden');
+        }
+      },
+
+      async _loadStats() {
+        try {
+          const token = AUTH.getToken();
+          const res = await fetch('/api/admin/stats', {
+            headers: { 'Authorization': 'Bearer ' + (token || '') },
+          });
+          if (!res.ok) throw new Error('Failed to load stats');
+          const data = await res.json();
+
+          const c = data.counts;
+          document.querySelectorAll('.stat-card')[0].querySelector('.stat-value').textContent = c.sites;
+          document.querySelectorAll('.stat-card')[1].querySelector('.stat-value').textContent = c.templates;
+          document.querySelectorAll('.stat-card')[2].querySelector('.stat-value').textContent = c.positions;
+          document.querySelectorAll('.stat-card')[3].querySelector('.stat-value').textContent = c.components;
+          document.querySelectorAll('.stat-card')[4].querySelector('.stat-value').textContent = c.users;
+          document.querySelectorAll('.stat-card')[5].querySelector('.stat-value').textContent = c.sessions;
+          document.querySelectorAll('.stat-card')[6].querySelector('.stat-value').textContent = c.models;
+
+          // Status breakdown
+          const sb = data.statusBreakdown;
+          const sbMap = {};
+          sb.forEach(s => { sbMap[s.status] = s.count; });
+          document.querySelector('.status-bar-item.complete').textContent = 'Complete: ' + (sbMap.complete || 0);
+          document.querySelector('.status-bar-item.partial').textContent = 'Partial: ' + (sbMap.partial || 0);
+          document.querySelector('.status-bar-item.missing').textContent = 'Missing: ' + (sbMap.missing || 0);
+        } catch (err) {
+          console.error('Stats load error:', err);
+        }
+      },
+
+      async _loadUsers() {
+        const list = document.getElementById('userList');
+        try {
+          const token = AUTH.getToken();
+          const res = await fetch('/api/admin/users', {
+            headers: { 'Authorization': 'Bearer ' + (token || '') },
+          });
+          if (!res.ok) throw new Error('Failed to load users');
+          const users = await res.json();
+          const currentUser = AUTH.getUser();
+
+          list.innerHTML = users.map(u => {
+            const isSelf = currentUser && u.id === currentUser.id;
+            return '<div class="user-row">' +
+              '<div class="user-info">' +
+                '<span class="username">' + esc(u.username) + '</span>' +
+                '<span class="meta">' +
+                  '<span class="role-badge ' + u.role + '">' + u.role + '</span>' +
+                  (isSelf ? ' <span class="role-badge" style="background:#e8eaf6;color:#283593;">you</span>' : '') +
+                  ' &middot; Created: ' + new Date(u.created_at).toLocaleDateString() +
+                '</span>' +
+              '</div>' +
+              '<div class="admin-actions">' +
+                (u.role === 'user'
+                  ? '<button class="btn btn--sm btn--outline" onclick="ADMIN._changeRole(' + u.id + ', \'admin\')">Make Admin</button>'
+                  : (!isSelf
+                    ? '<button class="btn btn--sm btn--outline" onclick="ADMIN._changeRole(' + u.id + ', \'user\')">Make User</button>'
+                    : '')
+                ) +
+                (!isSelf
+                  ? '<button class="btn btn--sm btn--danger" onclick="ADMIN._deleteUser(' + u.id + ', \'' + esc(u.username) + '\')">Delete</button>'
+                  : '') +
+              '</div>' +
+            '</div>';
+          }).join('');
+        } catch (err) {
+          list.innerHTML = '<div class="empty-state">Error loading users: ' + esc(err.message) + '</div>';
+        }
+      },
+
+      async _changeRole(userId, newRole) {
+        try {
+          const token = AUTH.getToken();
+          const res = await fetch('/api/admin/users/' + userId + '/role', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (token || '') },
+            body: JSON.stringify({ role: newRole }),
+          });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || 'Failed to change role');
+          }
+          this._showToast('Role updated', 'success');
+          this._loadUsers();
+          this._loadStats();
+        } catch (err) {
+          this._showToast(err.message, 'error');
+        }
+      },
+
+      _deleteUser(userId, username) {
+        if (!confirm('Delete user "' + username + '"? This cannot be undone.')) return;
+        fetch('/api/admin/users/' + userId, {
+          method: 'DELETE',
+          headers: { 'Authorization': 'Bearer ' + (AUTH.getToken() || '') },
+        }).then(res => {
+          if (!res.ok) throw new Error('Failed to delete');
+          this._showToast('User deleted', 'success');
+          this._loadUsers();
+          this._loadStats();
+        }).catch(err => {
+          this._showToast(err.message, 'error');
+        });
+      },
+
+      async _loadActivity() {
+        const tbody = document.getElementById('activityBody');
+        try {
+          const token = AUTH.getToken();
+          const res = await fetch('/api/admin/stats', {
+            headers: { 'Authorization': 'Bearer ' + (token || '') },
+          });
+          if (!res.ok) throw new Error('Failed to load activity');
+          const data = await res.json();
+
+          const activity = data.recentActivity || [];
+          if (activity.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No recent activity</td></tr>';
+            return;
+          }
+
+          tbody.innerHTML = activity.map(a => {
+            const escSite = esc(a.site_name || '');
+            const escPos = esc(a.position_name || '');
+            const escComp = esc(a.component_name || '');
+            const escSerial = esc(a.serial_number || '');
+            const escTag = esc(a.asset_tag || '');
+            const escBy = esc(a.updated_by || '-');
+            const date = a.updated_at ? new Date(a.updated_at).toLocaleString() : '-';
+            return '<tr><td>' + escSite + '</td><td>' + escPos + '</td><td>' + escComp + '</td><td class="mono">' + escSerial + '</td><td class="mono">' + escTag + '</td><td>' + escBy + '</td><td class="text-secondary text-sm">' + date + '</td></tr>';
+          }).join('');
+        } catch (err) {
+          tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Error: ' + esc(err.message) + '</td></tr>';
+        }
+      },
+
+      _showToast(message, type) {
+        var container = document.getElementById('toastContainer');
+        if (!container) {
+          container = document.createElement('div');
+          container.id = 'toastContainer';
+          container.className = 'toast-container';
+          document.body.appendChild(container);
+        }
+        var el = document.createElement('div');
+        el.className = 'toast ' + (type || 'success');
+        el.textContent = message;
+        container.appendChild(el);
+        setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 3000);
+      },
+    };
+
+    document.addEventListener('DOMContentLoaded', function () { ADMIN.init(); });
+  </script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 /* ============================================================
-   API Service Layer — all backend calls
+   API Service Layer — all backend calls with auth headers
    ============================================================ */
 
 const API_BASE = window.API_BASE || '';
@@ -10,8 +10,29 @@ const api = {
       method,
       headers: { 'Content-Type': 'application/json' },
     };
+
+    // Add auth token if logged in
+    const token = AUTH.getToken();
+    if (token) {
+      opts.headers['Authorization'] = 'Bearer ' + token;
+    }
+
     if (body) opts.body = JSON.stringify(body);
     const res = await fetch(`${API_BASE}/api${path}`, opts);
+
+    // If 401, clear auth and show login
+    if (res.status === 401 && !path.startsWith('/auth/login')) {
+      AUTH.clearAuth();
+      AUTH.showLoginModal();
+      throw new Error('Session expired. Please log in again.');
+    }
+
+    if (res.status === 403) {
+      // Still throw the error so the UI can handle it
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || 'Access denied');
+    }
+
     if (!res.ok) {
       let msg = `API error ${res.status}`;
       try {

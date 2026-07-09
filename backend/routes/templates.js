@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const db = require('../db');
+const { requireAuth, requireRole } = require('../middleware/auth');
 
 const router = Router();
 
@@ -124,8 +125,8 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/templates/:id
-router.delete('/:id', async (req, res) => {
+// DELETE /api/templates/:id — admin only
+router.delete('/:id', requireAuth, requireRole('admin'), async (req, res) => {
   try {
     const result = await db.query(
       'DELETE FROM position_templates WHERE id = $1 RETURNING id',
