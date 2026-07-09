@@ -6,6 +6,7 @@
 CREATE TABLE IF NOT EXISTS sites (
   id          SERIAL PRIMARY KEY,
   name        VARCHAR(255) NOT NULL UNIQUE,
+  created_by  INTEGER      REFERENCES users(id),
   created_at  TIMESTAMP    NOT NULL DEFAULT NOW(),
   updated_at  TIMESTAMP    NOT NULL DEFAULT NOW()
 );
@@ -34,6 +35,7 @@ CREATE TABLE IF NOT EXISTS positions (
   site_id     INTEGER      NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
   template_id INTEGER      NOT NULL REFERENCES position_templates(id),
   name        VARCHAR(255) NOT NULL,
+  created_by  INTEGER      REFERENCES users(id),
   created_at  TIMESTAMP    NOT NULL DEFAULT NOW(),
   updated_at  TIMESTAMP    NOT NULL DEFAULT NOW(),
   UNIQUE(site_id, name)

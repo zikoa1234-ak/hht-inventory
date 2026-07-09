@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HHT Inventory — Locations & Positions</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .admin-container { max-width: 1200px; margin: 0 auto; padding: 16px; }
+    .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .admin-header h1 { font-size: 1.4rem; margin: 0; }
+    .admin-section { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    .admin-section h2 { font-size: 1.1rem; margin: 0 0 12px 0; }
+    .two-pane { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .item-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .item-row:last-child { border-bottom: none; }
+    .item-row .name { font-weight: 600; }
+    .item-row .meta { font-size: 0.8rem; color: var(--text-secondary); }
+    .actions { display: flex; gap: 6px; }
+    .import-result { margin-top: 12px; padding: 12px; border-radius: 6px; font-size: 0.85rem; }
+    .import-result.success { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+    .import-result.warning { background: #fff3e0; color: #e65100; border: 1px solid #ffe0b2; }
+    .import-result.error { background: #fbe9e7; color: #c62828; border: 1px solid #ffcdd2; }
+    .file-upload-area { border: 2px dashed var(--border); border-radius: 8px; padding: 24px; text-align: center; cursor: pointer; transition: all var(--duration); }
+    .file-upload-area:hover { border-color: var(--primary); background: var(--color-cream-50); }
+    .file-upload-area.dragover { border-color: var(--primary); background: #e3f2fd; }
+    .file-upload-area .hint { font-size: 0.85rem; color: var(--text-secondary); margin-top: 8px; }
+    .selected-location-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .selected-location-header h3 { margin: 0; font-size: 1rem; }
+    .empty-state-sm { text-align: center; padding: 16px; color: var(--text-secondary); font-size: 0.85rem; }
+    .inline-form { display: flex; gap: 8px; margin-bottom: 8px; }
+    .inline-form input { flex: 1; }
+    .inline-form .btn { white-space: nowrap; }
+    .position-list { max-height: 400px; overflow-y: auto; }
+    .badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 0.7rem; background: var(--color-cream-100); border: 1px solid var(--border); }
+    .position-preview { margin-top: 8px; padding: 8px; background: var(--color-cream-50); border-radius: 4px; font-size: 0.8rem; max-height: 120px; overflow-y: auto; }
+    .position-preview code { font-family: monospace; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <nav class="top-nav">
+      <a href="/admin.html" class="nav-btn" title="Back to Admin">&#9664;</a>
+      <span class="nav-title">Locations & Positions</span>
+      <div class="nav-right">
+        <span id="adminUserBadge" class="user-badge"></span>
+        <button class="nav-btn" id="adminLogoutBtn" title="Logout">&#128682;</button>
+      </div>
+    </nav>
+
+    <div class="admin-container">
+      <!-- Two-pane layout -->
+      <div class="two-pane">
+        <!-- LEFT: Locations -->
+        <div class="admin-section">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <h2 style="margin:0;">Locations</h2>
+            <button class="btn btn--sm btn--primary" id="addLocationBtn">+ Add</button>
+          </div>
+
+          <!-- Inline create form -->
+          <div id="createLocationForm" class="inline-form hidden">
+            <input type="text" id="newLocationName" class="form-control" placeholder="Location name (e.g. AGA)">
+            <button class="btn btn--sm btn--primary" id="saveLocationBtn">Save</button>
+            <button class="btn btn--sm btn--outline" id="cancelLocationBtn">Cancel</button>
+          </div>
+
+          <div id="locationList"><div class="empty-state-sm">Loading...</div></div>
+
+          <!-- Edit location modal -->
+          <div id="editLocationOverlay" class="modal-overlay hidden">
+            <div class="modal-panel modal-sm">
+              <div class="modal-header"><h3>Edit Location</h3><button class="btn btn--sm btn--outline modal-close-btn">&times;</button></div>
+              <div class="modal-body">
+                <div class="form-group">
+                  <label class="form-label">Location Name</label>
+                  <input type="text" id="editLocationName" class="form-control">
+                  <input type="hidden" id="editLocationId">
+                </div>
+                <div id="editLocationError" class="field-error hidden"></div>
+              </div>
+              <div class="modal-footer">
+                <button class="btn btn--outline modal-close-btn">Cancel</button>
+                <button class="btn btn--primary" id="saveEditLocationBtn">Save</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Positions for selected location -->
+        <div class="admin-section">
+          <h2>Positions</h2>
+          <div class="form-group">
+            <label class="form-label">Select Location</label>
+            <select id="positionLocationSelect" class="form-control">
+              <option value="">-- Select a location first --</option>
+            </select>
+          </div>
+
+          <div id="positionsPanel" class="hidden">
+            <div class="selected-location-header">
+              <h3 id="selectedLocationTitle">-</h3>
+              <button class="btn btn--sm btn--primary" id="addPositionBtn">+ Add</button>
+            </div>
+
+            <!-- Inline create position form -->
+            <div id="createPositionForm" class="inline-form hidden">
+              <input type="text" id="newPositionName" class="form-control" placeholder="Position name">
+              <button class="btn btn--sm btn--primary" id="savePositionBtn">Save</button>
+              <button class="btn btn--sm btn--outline" id="cancelPositionBtn">Cancel</button>
+            </div>
+
+            <div class="position-list" id="positionList"><div class="empty-state-sm">No positions for this location.</div></div>
+
+            <!-- TXT bulk import -->
+            <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px;">
+              <h4 style="margin:0 0 8px 0;font-size:0.9rem;">Bulk Import from TXT</h4>
+              <div class="file-upload-area" id="fileUploadArea">
+                <p style="margin:0;font-weight:600;">&#128196; Click to upload or drag & drop</p>
+                <p class="hint">Accepts .txt only — one position name per line</p>
+                <input type="file" id="fileInput" accept=".txt" style="display:none">
+              </div>
+              <div class="position-preview hidden" id="filePreview">
+                <strong>Preview:</strong> <span id="fileLineCount">0</span> line(s) — <span id="fileUniqueCount">0</span> unique
+                <div id="fileSampleLines" style="margin-top:4px;"></div>
+              </div>
+              <button class="btn btn--primary btn--full-width mt-8 hidden" id="importBtn">Import Positions</button>
+              <div id="importResult"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    const LOCATIONS = {
+      selectedSiteId: null,
+      positionsCache: [],
+      fileContent: null,
+
+      async init() {
+        if (!AUTH.isLoggedIn()) { window.location.href = '/'; return; }
+        const user = AUTH.getUser();
+        document.getElementById('adminUserBadge').textContent = user.username + ' [Admin]';
+        document.getElementById('adminLogoutBtn').addEventListener('click', () => AUTH.logout());
+
+        this._setupEvents();
+        await this._loadLocations();
+        await this._loadPositionLocationSelect();
+      },
+
+      _setupEvents() {
+        // Add location
+        document.getElementById('addLocationBtn').addEventListener('click', () => {
+          document.getElementById('createLocationForm').classList.remove('hidden');
+          document.getElementById('newLocationName').focus();
+        });
+        document.getElementById('cancelLocationBtn').addEventListener('click', () => {
+          document.getElementById('createLocationForm').classList.add('hidden');
+          document.getElementById('newLocationName').value = '';
+        });
+        document.getElementById('saveLocationBtn').addEventListener('click', () => this._createLocation());
+        document.getElementById('newLocationName').addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') this._createLocation();
+        });
+
+        // Edit location modal
+        const editOverlay = document.getElementById('editLocationOverlay');
+        editOverlay.querySelectorAll('.modal-close-btn').forEach(btn => {
+          btn.addEventListener('click', () => editOverlay.classList.add('hidden'));
+        });
+        editOverlay.addEventListener('click', (e) => {
+          if (e.target === editOverlay) editOverlay.classList.add('hidden');
+        });
+        document.getElementById('saveEditLocationBtn').addEventListener('click', () => this._saveEditLocation());
+        document.getElementById('editLocationName').addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') this._saveEditLocation();
+        });
+
+        // Position location select
+        document.getElementById('positionLocationSelect').addEventListener('change', (e) => {
+          this.selectedSiteId = e.target.value;
+          if (this.selectedSiteId) {
+            document.getElementById('positionsPanel').classList.remove('hidden');
+            this._loadPositions();
+          } else {
+            document.getElementById('positionsPanel').classList.add('hidden');
+          }
+        });
+
+        // Add position
+        document.getElementById('addPositionBtn').addEventListener('click', () => {
+          document.getElementById('createPositionForm').classList.remove('hidden');
+          document.getElementById('newPositionName').focus();
+        });
+        document.getElementById('cancelPositionBtn').addEventListener('click', () => {
+          document.getElementById('createPositionForm').classList.add('hidden');
+          document.getElementById('newPositionName').value = '';
+        });
+        document.getElementById('savePositionBtn').addEventListener('click', () => this._createPosition());
+        document.getElementById('newPositionName').addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') this._createPosition();
+        });
+
+        // File upload
+        const uploadArea = document.getElementById('fileUploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+          uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+          e.preventDefault();
+          uploadArea.classList.remove('dragover');
+          if (e.dataTransfer.files.length > 0) {
+            this._handleFile(e.dataTransfer.files[0]);
+          }
+        });
+        fileInput.addEventListener('change', (e) => {
+          if (e.target.files.length > 0) {
+            this._handleFile(e.target.files[0]);
+          }
+        });
+
+        document.getElementById('importBtn').addEventListener('click', () => this._importPositions());
+      },
+
+      async _loadLocations() {
+        const list = document.getElementById('locationList');
+        try {
+          const res = await fetch('/api/sites');
+          const sites = await res.json();
+
+          list.innerHTML = sites.map(s => {
+            const date = s.created_at ? new Date(s.created_at).toLocaleDateString() : '-';
+            return '<div class="item-row">' +
+              '<div><span class="name">' + esc(s.name) + '</span><div class="meta">Created: ' + date + '</div></div>' +
+              '<div class="actions">' +
+                '<button class="btn btn--sm btn--outline" onclick="LOCATIONS._editLocation(' + s.id + ',\'' + esc(s.name) + '\')">Edit</button>' +
+                '<button class="btn btn--sm btn--danger" onclick="LOCATIONS._deleteLocation(' + s.id + ',\'' + esc(s.name) + '\')">Del</button>' +
+              '</div>' +
+            '</div>';
+          }).join('');
+        } catch (err) {
+          list.innerHTML = '<div class="empty-state-sm">Error: ' + esc(err.message) + '</div>';
+        }
+      },
+
+      async _loadPositionLocationSelect() {
+        const sel = document.getElementById('positionLocationSelect');
+        try {
+          const res = await fetch('/api/sites');
+          const sites = await res.json();
+          sel.innerHTML = '<option value="">-- Select a location --</option>' +
+            sites.map(s => '<option value="' + s.id + '">' + esc(s.name) + '</option>').join('');
+        } catch (err) {
+          sel.innerHTML = '<option value="">Error loading</option>';
+        }
+      },
+
+      async _createLocation() {
+        const name = document.getElementById('newLocationName').value.trim();
+        if (!name) { this._toast('Location name required', 'error'); return; }
+        try {
+          const token = AUTH.getToken();
+          const res = await fetch('/api/sites', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (token || '') },
+            body: JSON.stringify({ name }),
+          });
+          if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+          document.getElementById('newLocationName').value = '';
+          document.getElementById('createLocationForm').classList.add('hidden');
+          this._toast('Location "' + name + '" created', 'success');
+          await this._loadLocations();
+          await this._loadPositionLocationSelect();
+        } catch (err) { this._toast(err.message, 'error'); }
+      },
+
+      _editLocation(id, name) {
+        document.getElementById('editLocationId').value = id;
+        document.getElementById('editLocationName').value = name;
+        document.getElementById('editLocationError').classList.add('hidden');
+        document.getElementById('editLocationOverlay').classList.remove('hidden');
+      },
+
+      async _saveEditLocation() {
+        const id = document.getElementById('editLocationId').value;
+        const name = document.getElementById('editLocationName').value.trim();
+        const errorEl = document.getElementById('editLocationError');
+        if (!name) { errorEl.textContent = 'Name is required'; errorEl.classList.remove('hidden'); return; }
+        try {
+          const token = AUTH.getToken();
+          const res = await fetch('/api/sites/' + id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (token || '') },
+            body: JSON.stringify({ name }),
+          });
+          if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+          document.getElementById('editLocationOverlay').classList.add('hidden');
+          this._toast('Location updated', 'success');
+          await this._loadLocations();
+          await this._loadPositionLocationSelect();
+        } catch (err) { errorEl.textContent = err.message; errorEl.classList.remove('hidden'); }
+      },
+
+      _deleteLocation(id, name) {
+        if (!confirm('Delete location "' + name + '"? Positions in this location must be removed first.')) return;
+        const token = AUTH.getToken();
+        fetch('/api/sites/' + id, {
+          method: 'DELETE',
+          headers: { 'Authorization': 'Bearer ' + (token || '') },
+        }).then(r => {
+          if (!r.ok) return r.json().then(d => { throw new Error(d.error); });
+          this._toast('Location deleted', 'success');
+          this._loadLocations();
+          this._loadPositionLocationSelect();
+          if (this.selectedSiteId === String(id)) {
+            document.getElementById('positionsPanel').classList.add('hidden');
+            this.selectedSiteId = null;
+            document.getElementById('positionLocationSelect').value = '';
+          }
+        }).catch(err => this._toast(err.message, 'error'));
+      },
+
+      // ===== POSITIONS =====
+
+      async _loadPositions() {
+        if (!this.selectedSiteId) return;
+        const list = document.getElementById('positionList');
+        const title = document.getElementById('selectedLocationTitle');
+        const sites = await (await fetch('/api/sites')).json();
+        const site = sites.find(s => String(s.id) === String(this.selectedSiteId));
+        title.textContent = site ? site.name + ' — Positions' : 'Positions';
+
+        try {
+          const res = await fetch('/api/positions');
+          const all = await res.json();
+          this.positionsCache = all.filter(p => String(p.site_id) === String(this.selectedSiteId));
+
+          list.innerHTML = this.positionsCache.map(p => {
+            const date = p.created_at ? new Date(p.created_at).toLocaleDateString() : '-';
+            return '<div class="item-row">' +
+              '<div><span class="name">' + esc(p.name) + '</span><div class="meta">' + esc(p.template_name || '') + ' &middot; ' + date + '</div></div>' +
+              '<div class="actions">' +
+                '<button class="btn btn--sm btn--danger" onclick="LOCATIONS._deletePosition(' + p.id + ',\'' + esc(p.name) + '\')">Del</button>' +
+              '</div>' +
+            '</div>';
+          }).join('');
+
+          if (this.positionsCache.length === 0) {
+            list.innerHTML = '<div class="empty-state-sm">No positions. Create one or import from TXT.</div>';
+          }
+        } catch (err) {
+          list.innerHTML = '<div class="empty-state-sm">Error: ' + esc(err.message) + '</div>';
+        }
+      },
+
+      async _createPosition() {
+        const name = document.getElementById('newPositionName').value.trim();
+        if (!name || !this.selectedSiteId) { this._toast('Position name required', 'error'); return; }
+        // Get first template to use
+        let tplId = null;
+        try {
+          const tplRes = await fetch('/api/templates');
+          const templates = await tplRes.json();
+          tplId = templates.length > 0 ? templates[0].id : null;
+        } catch (_) {}
+        if (!tplId) { this._toast('No template available. Create a template first.', 'error'); return; }
+
+        try {
+          const token = AUTH.getToken();
+          const res = await fetch('/api/positions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (token || '') },
+            body: JSON.stringify({ site_id: parseInt(this.selectedSiteId), template_id: tplId, name }),
+          });
+          if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+          document.getElementById('newPositionName').value = '';
+          document.getElementById('createPositionForm').classList.add('hidden');
+          this._toast('Position "' + name + '" created', 'success');
+          this._loadPositions();
+        } catch (err) { this._toast(err.message, 'error'); }
+      },
+
+      _deletePosition(id, name) {
+        if (!confirm('Delete position "' + name + '"? This will also remove all scanned components.')) return;
+        const token = AUTH.getToken();
+        fetch('/api/positions/' + id, {
+          method: 'DELETE',
+          headers: { 'Authorization': 'Bearer ' + (token || '') },
+        }).then(r => {
+          if (!r.ok) return r.json().then(d => { throw new Error(d.error); });
+          this._toast('Position deleted', 'success');
+          this._loadPositions();
+        }).catch(err => this._toast(err.message, 'error'));
+      },
+
+      // ===== TXT IMPORT =====
+
+      _handleFile(file) {
+        if (!file.name.toLowerCase().endsWith('.txt')) {
+          this._toast('Only .txt files are accepted', 'error');
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          this.fileContent = e.target.result;
+          const lines = this.fileContent.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+          const unique = new Set(lines);
+          document.getElementById('fileLineCount').textContent = lines.length;
+          document.getElementById('fileUniqueCount').textContent = unique.size;
+          document.getElementById('filePreview').classList.remove('hidden');
+
+          // Show first 5 lines as sample
+          const sample = Array.from(unique).slice(0, 5);
+          document.getElementById('fileSampleLines').innerHTML = '<code>' + sample.join('<br>') + '</code>' +
+            (unique.size > 5 ? '<br><span class="badge">+' + (unique.size - 5) + ' more</span>' : '');
+
+          document.getElementById('importBtn').classList.remove('hidden');
+          document.getElementById('importResult').innerHTML = '';
+        };
+        reader.readAsText(file);
+      },
+
+      async _importPositions() {
+        if (!this.selectedSiteId || !this.fileContent) {
+          this._toast('Select a location and upload a file first', 'error');
+          return;
+        }
+        const importBtn = document.getElementById('importBtn');
+        importBtn.disabled = true;
+        importBtn.textContent = 'Importing...';
+
+        try {
+          const token = AUTH.getToken();
+          const res = await fetch('/api/positions/bulk-import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (token || '') },
+            body: JSON.stringify({ site_id: parseInt(this.selectedSiteId), content: this.fileContent }),
+          });
+          const data = await res.json();
+          const resultDiv = document.getElementById('importResult');
+
+          if (!res.ok) {
+            resultDiv.innerHTML = '<div class="import-result error">' + esc(data.error || 'Import failed') + '</div>';
+            return;
+          }
+
+          const cls = data.created > 0 ? 'success' : 'warning';
+          resultDiv.innerHTML = '<div class="import-result ' + cls + '">' +
+            '<strong>Import complete:</strong><br>' +
+            'Created: ' + data.created + '<br>' +
+            'Skipped (duplicates): ' + data.skipped + '<br>' +
+            'Duplicates in file: ' + (data.fileDuplicates || 0) + '<br>' +
+            (data.errors && data.errors.length > 0 ? 'Errors: ' + data.errors.length + '<br>' : '') +
+            '</div>';
+
+          this._toast(data.message, data.created > 0 ? 'success' : 'warning');
+          this.fileContent = null;
+          document.getElementById('filePreview').classList.add('hidden');
+          document.getElementById('importBtn').classList.add('hidden');
+          document.getElementById('fileInput').value = '';
+          this._loadPositions();
+        } catch (err) {
+          document.getElementById('importResult').innerHTML = '<div class="import-result error">' + esc(err.message) + '</div>';
+        } finally {
+          importBtn.disabled = false;
+          importBtn.textContent = 'Import Positions';
+        }
+      },
+
+      _toast(message, type) {
+        var container = document.getElementById('toastContainer');
+        if (!container) {
+          container = document.createElement('div');
+          container.id = 'toastContainer';
+          container.className = 'toast-container';
+          document.body.appendChild(container);
+        }
+        var el = document.createElement('div');
+        el.className = 'toast ' + (type || 'success');
+        el.textContent = message;
+        container.appendChild(el);
+        setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 3000);
+      },
+    };
+
+    document.addEventListener('DOMContentLoaded', function () { LOCATIONS.init(); });
+  </script>
+</body>
+</html>

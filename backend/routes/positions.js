@@ -38,8 +38,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST /api/positions — create position from template
-router.post('/', async (req, res) => {
+// POST /api/positions — create position from template (admin only)
+router.post('/', requireAuth, requireRole('admin'), async (req, res) => {
   const { site_id, template_id, name } = req.body;
   if (!site_id || !template_id || !name || !name.trim()) {
     return res.status(400).json({ error: 'site_id, template_id, and name are required' });
@@ -104,6 +104,97 @@ router.post('/', async (req, res) => {
   }
 });
 
+// POST /api/positions/bulk-import — bulk create positions from TXT content (admin only)
+router.post('/bulk-import', requireAuth, requireRole('admin'), async (req, res) => {
+  const { site_id, content, template_id } = req.body;
+  if (!site_id) {
+    return res.status(400).json({ error: 'site_id is required' });
+  }
+  if (!content || !content.trim()) {
+    return res.status(400).json({ error: 'File content is required' });
+  }
+
+  try {
+    // Parse lines
+    const lines = content.split('\n')
+      .map(l => l.trim())
+      .filter(l => l.length > 0);
+
+    // Deduplicate within file
+    const seen = new Set();
+    const uniqueLines = [];
+    for (const line of lines) {
+      if (!seen.has(line)) {
+        seen.add(line);
+        uniqueLines.push(line);
+      }
+    }
+    const fileDuplicates = lines.length - uniqueLines.length;
+
+    // Find existing positions for this site
+    const existing = await db.query(
+      'SELECT name FROM positions WHERE site_id = $1',
+      [site_id]
+    );
+    const existingNames = new Set(existing.rows.map(r => r.name));
+
+    // Determine template to use
+    let tplId = template_id;
+    if (!tplId) {
+      const defaultTpl = await db.query(
+        'SELECT id FROM position_templates ORDER BY id LIMIT 1'
+      );
+      if (defaultTpl.rows.length > 0) {
+        tplId = defaultTpl.rows[0].id;
+      } else {
+        // Create a default template
+        const newTpl = await db.query(
+          `INSERT INTO position_templates (name) VALUES ('Default') RETURNING id`
+        );
+        tplId = newTpl.rows[0].id;
+      }
+    }
+
+    // Insert new positions
+    let created = 0;
+    let skipped = 0;
+    const errors = [];
+
+    for (const name of uniqueLines) {
+      if (existingNames.has(name)) {
+        skipped++;
+        continue;
+      }
+      try {
+        await db.query(
+          `INSERT INTO positions (site_id, template_id, name, created_by)
+           VALUES ($1, $2, $3, $4)`,
+          [site_id, tplId, name, req.user.id]
+        );
+        created++;
+      } catch (err) {
+        if (err.code === '23505') {
+          skipped++;
+        } else {
+          errors.push({ name, error: err.message });
+        }
+      }
+    }
+
+    res.status(201).json({
+      total: uniqueLines.length,
+      created,
+      skipped,
+      fileDuplicates,
+      errors: errors.length > 0 ? errors : undefined,
+      message: `Created ${created} position(s), skipped ${skipped}, ${fileDuplicates} duplicate(s) in file.`,
+    });
+  } catch (err) {
+    console.error('POST /positions/bulk-import error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/positions/:id — single position with components
 router.get('/:id', async (req, res) => {
   try {
@@ -141,8 +232,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// PUT /api/positions/:id — update position basic info
-router.put('/:id', async (req, res) => {
+// PUT /api/positions/:id — update position basic info (admin only)
+router.put('/:id', requireAuth, requireRole('admin'), async (req, res) => {
   const { name, site_id } = req.body;
   try {
     const updates = [];
