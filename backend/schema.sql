@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS template_components (
 CREATE TABLE IF NOT EXISTS positions (
   id          SERIAL PRIMARY KEY,
   site_id     INTEGER      NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
-  template_id INTEGER      NOT NULL REFERENCES position_templates(id),
+  template_id INTEGER      REFERENCES position_templates(id) ON DELETE SET NULL,
   name        VARCHAR(255) NOT NULL,
   created_by  INTEGER      REFERENCES users(id),
   created_at  TIMESTAMP    NOT NULL DEFAULT NOW(),
