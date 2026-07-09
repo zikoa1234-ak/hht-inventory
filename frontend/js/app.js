@@ -2,13 +2,7 @@
    HHT Inventory — Main App Entry Point (Fixed)
    ============================================================ */
 
-// Universal helpers
-const esc = (s) => {
-  if (s === null || s === undefined) return '';
-  const d = document.createElement('div');
-  d.textContent = String(s);
-  return d.innerHTML;
-};
+// Universal helpers — esc() is defined in auth.js (loaded before app.js)
 
 const AppHelpers = {
   showScreen(name) {
