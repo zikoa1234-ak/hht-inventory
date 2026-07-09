@@ -8,7 +8,7 @@ const router = Router();
 router.get('/', async (req, res) => {
   try {
     const result = await db.query(
-      'SELECT id, name, created_by, created_at, updated_at FROM sites ORDER BY name'
+      'SELECT id, name, assigned_person, created_by, created_at, updated_at FROM sites ORDER BY name'
     );
     res.json(result.rows);
   } catch (err) {
@@ -19,14 +19,14 @@ router.get('/', async (req, res) => {
 
 // POST /api/sites — admin only
 router.post('/', requireAuth, requireRole('admin'), async (req, res) => {
-  const { name } = req.body;
+  const { name, assigned_person } = req.body;
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'Site name is required' });
   }
   try {
     const result = await db.query(
-      'INSERT INTO sites (name, created_by) VALUES ($1, $2) RETURNING id, name, created_by, created_at, updated_at',
-      [name.trim(), req.user.id]
+      'INSERT INTO sites (name, assigned_person, created_by) VALUES ($1, $2, $3) RETURNING id, name, assigned_person, created_by, created_at, updated_at',
+      [name.trim(), assigned_person || null, req.user.id]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -40,14 +40,14 @@ router.post('/', requireAuth, requireRole('admin'), async (req, res) => {
 
 // PUT /api/sites/:id — admin only
 router.put('/:id', requireAuth, requireRole('admin'), async (req, res) => {
-  const { name } = req.body;
+  const { name, assigned_person } = req.body;
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'Site name is required' });
   }
   try {
     const result = await db.query(
-      'UPDATE sites SET name = $1, updated_at = NOW() WHERE id = $2 RETURNING id, name, created_by, created_at, updated_at',
-      [name.trim(), req.params.id]
+      'UPDATE sites SET name = $1, assigned_person = $2, updated_at = NOW() WHERE id = $3 RETURNING id, name, assigned_person, created_by, created_at, updated_at',
+      [name.trim(), assigned_person || null, req.params.id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Site not found' });

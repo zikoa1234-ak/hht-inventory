@@ -59,10 +59,18 @@
           </div>
 
           <!-- Inline create form -->
-          <div id="createLocationForm" class="inline-form hidden">
-            <input type="text" id="newLocationName" class="form-control" placeholder="Location name (e.g. AGA)">
-            <button class="btn btn--sm btn--primary" id="saveLocationBtn">Save</button>
-            <button class="btn btn--sm btn--outline" id="cancelLocationBtn">Cancel</button>
+          <div id="createLocationForm" class="hidden" style="margin-bottom:8px;">
+            <div class="inline-form">
+              <input type="text" id="newLocationName" class="form-control" placeholder="Location name (e.g. AGA)">
+              <button class="btn btn--sm btn--primary" id="saveLocationBtn">Save</button>
+              <button class="btn btn--sm btn--outline" id="cancelLocationBtn">Cancel</button>
+            </div>
+            <div class="form-group" style="margin:4px 0 0 0;">
+              <label class="form-label" style="font-size:0.8rem;">Assigned Person</label>
+              <select id="newLocationPerson" class="form-control">
+                <option value="">-- Assign Person --</option>
+              </select>
+            </div>
           </div>
 
           <div id="locationList"><div class="empty-state-sm">Loading...</div></div>
@@ -76,6 +84,12 @@
                   <label class="form-label">Location Name</label>
                   <input type="text" id="editLocationName" class="form-control">
                   <input type="hidden" id="editLocationId">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Assigned Person</label>
+                  <select id="editLocationPerson" class="form-control">
+                    <option value="">-- Assign Person --</option>
+                  </select>
                 </div>
                 <div id="editLocationError" class="field-error hidden"></div>
               </div>
@@ -114,12 +128,6 @@
                 <label class="form-label" style="font-size:0.8rem;">Template</label>
                 <select id="createPositionTemplate" class="form-control">
                   <option value="">-- Select Template --</option>
-                </select>
-              </div>
-              <div class="form-group" style="margin:8px 0 0 0;">
-                <label class="form-label" style="font-size:0.8rem;">Assigned Person</label>
-                <select id="createPositionPerson" class="form-control">
-                  <option value="">-- Assign Person --</option>
                 </select>
               </div>
             </div>
@@ -172,6 +180,8 @@
         await this._loadLocations();
         await this._loadPositionLocationSelect();
         await this._loadTemplates();
+        populatePeopleSelect(document.getElementById('newLocationPerson'));
+        populatePeopleSelect(document.getElementById('editLocationPerson'));
       },
 
       async _loadTemplates() {
@@ -185,8 +195,6 @@
           document.getElementById('createPositionTemplate').innerHTML = '<option value="">-- Select Template --</option>' + opts;
           document.getElementById('bulkImportTemplate').innerHTML = '<option value="">-- Select Template --</option>' + opts;
         } catch (_) {}
-        // Populate Assigned Person dropdown
-        populatePeopleSelect(document.getElementById('createPositionPerson'));
       },
 
       _setupEvents() {
@@ -281,10 +289,11 @@
 
           list.innerHTML = sites.map(s => {
             const date = s.created_at ? new Date(s.created_at).toLocaleDateString() : '-';
+            const person = s.assigned_person ? esc(s.assigned_person) : '';
             return '<div class="item-row">' +
-              '<div><span class="name">' + esc(s.name) + '</span><div class="meta">Created: ' + date + '</div></div>' +
+              '<div><span class="name">' + esc(s.name) + '</span><div class="meta">' + (person ? 'Person: ' + person + ' &middot; ' : '') + 'Created: ' + date + '</div></div>' +
               '<div class="actions">' +
-                '<button class="btn btn--sm btn--outline" onclick="LOCATIONS._editLocation(' + s.id + ',\'' + esc(s.name) + '\')">Edit</button>' +
+                '<button class="btn btn--sm btn--outline" onclick="LOCATIONS._editLocation(' + s.id + ',\'' + esc(s.name) + '\',\'' + person + '\')">Edit</button>' +
                 '<button class="btn btn--sm btn--danger" onclick="LOCATIONS._deleteLocation(' + s.id + ',\'' + esc(s.name) + '\')">Del</button>' +
               '</div>' +
             '</div>';
@@ -312,12 +321,13 @@
       async _createLocation() {
         const name = document.getElementById('newLocationName').value.trim();
         if (!name) { this._toast('Location name required', 'error'); return; }
+        const assignedPerson = document.getElementById('newLocationPerson').value;
         try {
           const token = AUTH.getToken();
           const res = await fetch('/api/sites', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (token || '') },
-            body: JSON.stringify({ name }),
+            body: JSON.stringify({ name, assigned_person: assignedPerson || null }),
           });
           if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
           document.getElementById('newLocationName').value = '';
@@ -328,9 +338,10 @@
         } catch (err) { this._toast(err.message, 'error'); }
       },
 
-      _editLocation(id, name) {
+      _editLocation(id, name, assignedPerson) {
         document.getElementById('editLocationId').value = id;
         document.getElementById('editLocationName').value = name;
+        document.getElementById('editLocationPerson').value = assignedPerson || '';
         document.getElementById('editLocationError').classList.add('hidden');
         document.getElementById('editLocationOverlay').classList.remove('hidden');
       },
@@ -338,6 +349,7 @@
       async _saveEditLocation() {
         const id = document.getElementById('editLocationId').value;
         const name = document.getElementById('editLocationName').value.trim();
+        const assignedPerson = document.getElementById('editLocationPerson').value;
         const errorEl = document.getElementById('editLocationError');
         if (!name) { errorEl.textContent = 'Name is required'; errorEl.classList.remove('hidden'); return; }
         try {
@@ -345,7 +357,7 @@
           const res = await fetch('/api/sites/' + id, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (token || '') },
-            body: JSON.stringify({ name }),
+            body: JSON.stringify({ name, assigned_person: assignedPerson || null }),
           });
           if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
           document.getElementById('editLocationOverlay').classList.add('hidden');
@@ -394,9 +406,8 @@
 
           list.innerHTML = this.positionsCache.map(p => {
             const date = p.created_at ? new Date(p.created_at).toLocaleDateString() : '-';
-            const person = p.assigned_person ? ' &middot; ' + esc(p.assigned_person) : '';
             return '<div class="item-row">' +
-              '<div><span class="name">' + esc(p.name) + '</span><div class="meta">' + esc(p.template_name || '') + ' &middot; ' + date + person + '</div></div>' +
+              '<div><span class="name">' + esc(p.name) + '</span><div class="meta">' + esc(p.template_name || '') + ' &middot; ' + date + '</div></div>' +
               '<div class="actions">' +
                 '<button class="btn btn--sm btn--danger" onclick="LOCATIONS._deletePosition(' + p.id + ',\'' + esc(p.name) + '\')">Del</button>' +
               '</div>' +
@@ -414,7 +425,6 @@
       async _createPosition() {
         const name = document.getElementById('newPositionName').value.trim();
         const tplId = document.getElementById('createPositionTemplate').value;
-        const person = document.getElementById('createPositionPerson').value;
         if (!name || !this.selectedSiteId) { this._toast('Position name required', 'error'); return; }
         if (!tplId) { this._toast('Please select a template', 'error'); return; }
 
@@ -423,7 +433,7 @@
           const res = await fetch('/api/positions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (token || '') },
-            body: JSON.stringify({ site_id: parseInt(this.selectedSiteId), template_id: tplId, name, assigned_person: person || null }),
+            body: JSON.stringify({ site_id: parseInt(this.selectedSiteId), template_id: tplId, name }),
           });
           if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
           document.getElementById('newPositionName').value = '';
