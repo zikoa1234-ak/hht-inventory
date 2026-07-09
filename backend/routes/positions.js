@@ -636,4 +636,21 @@ router.post('/:id/init-from-template', async (req, res) => {
   }
 });
 
+// DELETE /api/positions/:id — admin only
+router.delete('/:id', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const result = await db.query(
+      'DELETE FROM positions WHERE id = $1 RETURNING id',
+      [req.params.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Position not found' });
+    }
+    res.json({ message: 'Position deleted' });
+  } catch (err) {
+    console.error('DELETE /positions/:id error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
