@@ -790,7 +790,10 @@ const PositionsScreen = {
       AppHelpers.toast('No position selected', 'error');
       return;
     }
-    window.open(api.getExportPositionCsvUrl(AppState.selectedPositionId));
+    api.downloadCsv(
+      api.getExportPositionCsvUrl(AppState.selectedPositionId),
+      `position_${AppState.selectedPositionId}.csv`
+    );
     AppHelpers.toast('Downloading CSV...', 'success');
   },
 

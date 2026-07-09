@@ -128,4 +128,37 @@ const api = {
     const qs = params.toString();
     return `${API_BASE}/api/export/positions.csv${qs ? '?' + qs : ''}`;
   },
+
+  /**
+   * Download a CSV file via fetch (includes auth token).
+   * Falls back to window.open if token is missing (unauthenticated export).
+   */
+  async downloadCsv(url, filename) {
+    const token = AUTH && AUTH.getToken ? AUTH.getToken() : null;
+    if (!token) {
+      // No token — fall back to direct navigation (will probably get 401)
+      window.open(url);
+      return;
+    }
+    try {
+      const res = await fetch(url, {
+        headers: { Authorization: 'Bearer ' + token },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Download failed (${res.status})`);
+      }
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+    } catch (err) {
+      AppHelpers.toast(err.message, 'error');
+    }
+  },
 };

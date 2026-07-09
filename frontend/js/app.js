@@ -681,7 +681,7 @@ var App = {
   _exportAll: function () {
     var siteId = this.siteSelect ? this.siteSelect.value : '';
     var templateId = this.templateSelect ? this.templateSelect.value : '';
-    window.open(api.getExportAllCsvUrl(siteId, templateId));
+    api.downloadCsv(api.getExportAllCsvUrl(siteId, templateId), 'all_positions.csv');
     AppHelpers.toast('Downloading all positions CSV...', 'success');
   },
 
