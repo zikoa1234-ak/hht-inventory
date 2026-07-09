@@ -26,7 +26,7 @@ router.get('/', optionalAuth, async (req, res) => {
     }
 
     const { rows } = await db.query(
-      `SELECT p.id, p.name, p.site_id, p.template_id, p.created_at, p.updated_at,
+      `SELECT p.id, p.name, p.site_id, p.template_id, p.assigned_person, p.created_at, p.updated_at,
               s.name AS site_name,
               pt.name AS template_name,
               COUNT(pc.id)::int AS total_components,
@@ -51,15 +51,15 @@ router.get('/', optionalAuth, async (req, res) => {
 
 // POST /api/positions — create position from template (admin only)
 router.post('/', requireAuth, requireRole('admin'), async (req, res) => {
-  const { site_id, template_id, name } = req.body;
+  const { site_id, template_id, name, assigned_person } = req.body;
   if (!site_id || !template_id || !name || !name.trim()) {
     return res.status(400).json({ error: 'site_id, template_id, and name are required' });
   }
   try {
     // Create position
     const pos = await db.query(
-      'INSERT INTO positions (site_id, template_id, name) VALUES ($1, $2, $3) RETURNING id, site_id, template_id, name, created_at, updated_at',
-      [site_id, template_id, name.trim()]
+      'INSERT INTO positions (site_id, template_id, name, assigned_person) VALUES ($1, $2, $3, $4) RETURNING id, site_id, template_id, name, assigned_person, created_at, updated_at',
+      [site_id, template_id, name.trim(), assigned_person || null]
     );
     const positionId = pos.rows[0].id;
 
@@ -255,7 +255,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
 
 // PUT /api/positions/:id — update position basic info (admin only)
 router.put('/:id', requireAuth, requireRole('admin'), async (req, res) => {
-  const { name, site_id } = req.body;
+  const { name, site_id, assigned_person } = req.body;
   try {
     const updates = [];
     const params = [];
@@ -268,6 +268,10 @@ router.put('/:id', requireAuth, requireRole('admin'), async (req, res) => {
     if (site_id) {
       updates.push(`site_id = $${idx++}`);
       params.push(site_id);
+    }
+    if (assigned_person !== undefined) {
+      updates.push(`assigned_person = $${idx++}`);
+      params.push(assigned_person || null);
     }
 
     if (updates.length === 0) {

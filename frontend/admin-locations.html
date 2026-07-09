@@ -116,6 +116,12 @@
                   <option value="">-- Select Template --</option>
                 </select>
               </div>
+              <div class="form-group" style="margin:8px 0 0 0;">
+                <label class="form-label" style="font-size:0.8rem;">Assigned Person</label>
+                <select id="createPositionPerson" class="form-control">
+                  <option value="">-- Assign Person --</option>
+                </select>
+              </div>
             </div>
 
             <div class="position-list" id="positionList"><div class="empty-state-sm">No positions for this location.</div></div>
@@ -149,6 +155,7 @@
 
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/people.js"></script>
   <script>
     const LOCATIONS = {
       selectedSiteId: null,
@@ -178,6 +185,8 @@
           document.getElementById('createPositionTemplate').innerHTML = '<option value="">-- Select Template --</option>' + opts;
           document.getElementById('bulkImportTemplate').innerHTML = '<option value="">-- Select Template --</option>' + opts;
         } catch (_) {}
+        // Populate Assigned Person dropdown
+        populatePeopleSelect(document.getElementById('createPositionPerson'));
       },
 
       _setupEvents() {
@@ -385,8 +394,9 @@
 
           list.innerHTML = this.positionsCache.map(p => {
             const date = p.created_at ? new Date(p.created_at).toLocaleDateString() : '-';
+            const person = p.assigned_person ? ' &middot; ' + esc(p.assigned_person) : '';
             return '<div class="item-row">' +
-              '<div><span class="name">' + esc(p.name) + '</span><div class="meta">' + esc(p.template_name || '') + ' &middot; ' + date + '</div></div>' +
+              '<div><span class="name">' + esc(p.name) + '</span><div class="meta">' + esc(p.template_name || '') + ' &middot; ' + date + person + '</div></div>' +
               '<div class="actions">' +
                 '<button class="btn btn--sm btn--danger" onclick="LOCATIONS._deletePosition(' + p.id + ',\'' + esc(p.name) + '\')">Del</button>' +
               '</div>' +
@@ -404,6 +414,7 @@
       async _createPosition() {
         const name = document.getElementById('newPositionName').value.trim();
         const tplId = document.getElementById('createPositionTemplate').value;
+        const person = document.getElementById('createPositionPerson').value;
         if (!name || !this.selectedSiteId) { this._toast('Position name required', 'error'); return; }
         if (!tplId) { this._toast('Please select a template', 'error'); return; }
 
@@ -412,7 +423,7 @@
           const res = await fetch('/api/positions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (token || '') },
-            body: JSON.stringify({ site_id: parseInt(this.selectedSiteId), template_id: tplId, name }),
+            body: JSON.stringify({ site_id: parseInt(this.selectedSiteId), template_id: tplId, name, assigned_person: person || null }),
           });
           if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
           document.getElementById('newPositionName').value = '';
