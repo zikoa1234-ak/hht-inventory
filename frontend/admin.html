@@ -34,6 +34,10 @@
     .status-bar-item.missing { background: #fbe9e7; color: #c62828; }
     .admin-actions { display: flex; gap: 8px; }
     .btn-sm { padding: 4px 10px; font-size: 0.8rem; }
+    .modal-lg { max-width: 600px; }
+    .assign-pos-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+    .assign-pos-item:last-child { border-bottom: none; }
+    .assign-pos-item input[type="checkbox"] { margin: 0; }
   </style>
 </head>
 <body>
@@ -142,6 +146,28 @@
     </div>
   </div>
 
+  <!-- Assign Positions Modal -->
+  <div id="assignPositionsOverlay" class="modal-overlay hidden">
+    <div class="modal-panel modal-lg">
+      <div class="modal-header">
+        <h3 id="assignPositionsTitle">Assign Positions to User</h3>
+        <button class="btn btn--sm btn--outline modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-secondary text-sm">Select positions this user can access. Uncheck to remove access.</p>
+        <div id="assignPositionsList" style="max-height:400px;overflow-y:auto;">
+          <div class="loading-spinner">Loading positions...</div>
+        </div>
+        <input type="hidden" id="assignPositionsUserId" value="">
+        <div id="assignPositionsError" class="field-error hidden"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn--outline modal-close-btn">Cancel</button>
+        <button class="btn btn--primary" id="saveAssignPositionsBtn">Save Assignments</button>
+      </div>
+    </div>
+  </div>
+
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
   <script>
@@ -162,6 +188,7 @@
         // Back button
         // Add user modal
         this._setupAddUserModal();
+        this._setupAssignPositionsModal();
 
         // Load data
         await this._loadStats();
@@ -189,6 +216,17 @@
         });
 
         submitBtn.addEventListener('click', () => this._createUser());
+      },
+
+      _setupAssignPositionsModal() {
+        const overlay = document.getElementById('assignPositionsOverlay');
+        overlay.querySelectorAll('.modal-close-btn').forEach(btn => {
+          btn.addEventListener('click', () => overlay.classList.add('hidden'));
+        });
+        overlay.addEventListener('click', (e) => {
+          if (e.target === overlay) overlay.classList.add('hidden');
+        });
+        document.getElementById('saveAssignPositionsBtn').addEventListener('click', () => this._saveAssignPositions());
       },
 
       async _createUser() {
@@ -265,29 +303,32 @@
           const currentUser = AUTH.getUser();
 
           list.innerHTML = users.map(u => {
-            const isSelf = currentUser && u.id === currentUser.id;
-            return '<div class="user-row">' +
-              '<div class="user-info">' +
-                '<span class="username">' + esc(u.username) + '</span>' +
-                '<span class="meta">' +
-                  '<span class="role-badge ' + u.role + '">' + u.role + '</span>' +
-                  (isSelf ? ' <span class="role-badge" style="background:#e8eaf6;color:#283593;">you</span>' : '') +
-                  ' &middot; Created: ' + new Date(u.created_at).toLocaleDateString() +
-                '</span>' +
-              '</div>' +
-              '<div class="admin-actions">' +
-                (u.role === 'user'
-                  ? '<button class="btn btn--sm btn--outline" onclick="ADMIN._changeRole(' + u.id + ', \'admin\')">Make Admin</button>'
-                  : (!isSelf
-                    ? '<button class="btn btn--sm btn--outline" onclick="ADMIN._changeRole(' + u.id + ', \'user\')">Make User</button>'
-                    : '')
-                ) +
-                (!isSelf
-                  ? '<button class="btn btn--sm btn--danger" onclick="ADMIN._deleteUser(' + u.id + ', \'' + esc(u.username) + '\')">Delete</button>'
-                  : '') +
-              '</div>' +
-            '</div>';
-          }).join('');
+                      const isSelf = currentUser && u.id === currentUser.id;
+                      return '<div class="user-row">' +
+                        '<div class="user-info">' +
+                          '<span class="username">' + esc(u.username) + '</span>' +
+                          '<span class="meta">' +
+                            '<span class="role-badge ' + u.role + '">' + u.role + '</span>' +
+                            (isSelf ? ' <span class="role-badge" style="background:#e8eaf6;color:#283593;">you</span>' : '') +
+                            ' &middot; Created: ' + new Date(u.created_at).toLocaleDateString() +
+                          '</span>' +
+                        '</div>' +
+                        '<div class="admin-actions">' +
+                          (u.role === 'user'
+                            ? '<button class="btn btn--sm btn--outline" onclick="ADMIN._changeRole(' + u.id + ',\'admin\')">Make Admin</button>'
+                            : (!isSelf
+                              ? '<button class="btn btn--sm btn--outline" onclick="ADMIN._changeRole(' + u.id + ',\'user\')">Make User</button>'
+                              : '')
+                          ) +
+                          (!isSelf
+                            ? '<button class="btn btn--sm btn--outline" onclick="ADMIN._openAssignPositions(' + u.id + ')">Positions</button>'
+                            : '') +
+                          (!isSelf
+                            ? '<button class="btn btn--sm btn--danger" onclick="ADMIN._deleteUser(' + u.id + ')">Delete</button>'
+                            : '') +
+                        '</div>' +
+                      '</div>';
+                    }).join('');
         } catch (err) {
           list.innerHTML = '<div class="empty-state">Error loading users: ' + esc(err.message) + '</div>';
         }
@@ -313,8 +354,8 @@
         }
       },
 
-      _deleteUser(userId, username) {
-        if (!confirm('Delete user "' + username + '"? This cannot be undone.')) return;
+      _deleteUser(userId) {
+        if (!confirm('Delete this user? This cannot be undone.')) return;
         fetch('/api/admin/users/' + userId, {
           method: 'DELETE',
           headers: { 'Authorization': 'Bearer ' + (AUTH.getToken() || '') },
@@ -325,6 +366,66 @@
           this._loadStats();
         }).catch(err => {
           this._showToast(err.message, 'error');
+        });
+      },
+
+      // ===== POSITION ASSIGNMENT =====
+
+      _openAssignPositions(userId) {
+        document.getElementById('assignPositionsUserId').value = userId;
+        document.getElementById('assignPositionsError').classList.add('hidden');
+        document.getElementById('assignPositionsOverlay').classList.remove('hidden');
+        this._loadAssignPositions(userId);
+      },
+
+      async _loadAssignPositions(userId) {
+        const list = document.getElementById('assignPositionsList');
+        const token = AUTH.getToken();
+        const headers = { 'Authorization': 'Bearer ' + (token || '') };
+        try {
+          // Fetch all positions and user's assigned positions in parallel
+          const [posRes, assignedRes] = await Promise.all([
+            fetch('/api/positions', { headers }),
+            fetch('/api/admin/users/' + userId + '/positions', { headers }),
+          ]);
+          const allPositions = await posRes.json();
+          const assigned = await assignedRes.json();
+          const assignedIds = new Set(assigned.map(a => a.position_id));
+
+          list.innerHTML = allPositions.map(p => {
+            const checked = assignedIds.has(p.id) ? 'checked' : '';
+            return '<label class="assign-pos-item">' +
+              '<input type="checkbox" class="pos-checkbox" value="' + p.id + '" ' + checked + '>' +
+              '<span>' + esc(p.site_name) + ' / <strong>' + esc(p.name) + '</strong> <span class="badge">' + esc(p.template_name || '') + '</span></span>' +
+              '</label>';
+          }).join('');
+
+          if (allPositions.length === 0) {
+            list.innerHTML = '<div class="empty-state-sm">No positions yet. Create positions first.</div>';
+          }
+        } catch (err) {
+          list.innerHTML = '<div class="empty-state-sm">Error: ' + esc(err.message) + '</div>';
+        }
+      },
+
+      _saveAssignPositions() {
+        const userId = document.getElementById('assignPositionsUserId').value;
+        const checkboxes = document.querySelectorAll('#assignPositionsList .pos-checkbox:checked');
+        const positionIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        const errorEl = document.getElementById('assignPositionsError');
+
+        const token = AUTH.getToken();
+        fetch('/api/admin/users/' + userId + '/positions', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (token || '') },
+          body: JSON.stringify({ position_ids: positionIds }),
+        }).then(r => {
+          if (!r.ok) return r.json().then(d => { throw new Error(d.error); });
+          document.getElementById('assignPositionsOverlay').classList.add('hidden');
+          this._showToast('Position assignments saved (' + positionIds.length + ' positions)', 'success');
+        }).catch(err => {
+          errorEl.textContent = err.message;
+          errorEl.classList.remove('hidden');
         });
       },
 

@@ -104,10 +104,18 @@
             </div>
 
             <!-- Inline create position form -->
-            <div id="createPositionForm" class="inline-form hidden">
-              <input type="text" id="newPositionName" class="form-control" placeholder="Position name">
-              <button class="btn btn--sm btn--primary" id="savePositionBtn">Save</button>
-              <button class="btn btn--sm btn--outline" id="cancelPositionBtn">Cancel</button>
+            <div id="createPositionForm" class="hidden" style="margin-bottom:8px;">
+              <div class="inline-form">
+                <input type="text" id="newPositionName" class="form-control" placeholder="Position name">
+                <button class="btn btn--sm btn--primary" id="savePositionBtn">Save</button>
+                <button class="btn btn--sm btn--outline" id="cancelPositionBtn">Cancel</button>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label" style="font-size:0.8rem;">Template</label>
+                <select id="createPositionTemplate" class="form-control">
+                  <option value="">-- Select Template --</option>
+                </select>
+              </div>
             </div>
 
             <div class="position-list" id="positionList"><div class="empty-state-sm">No positions for this location.</div></div>
@@ -115,6 +123,12 @@
             <!-- TXT bulk import -->
             <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px;">
               <h4 style="margin:0 0 8px 0;font-size:0.9rem;">Bulk Import from TXT</h4>
+              <div class="form-group">
+                <label class="form-label">Template for imported positions</label>
+                <select id="bulkImportTemplate" class="form-control">
+                  <option value="">-- Select Template --</option>
+                </select>
+              </div>
               <div class="file-upload-area" id="fileUploadArea">
                 <p style="margin:0;font-weight:600;">&#128196; Click to upload or drag & drop</p>
                 <p class="hint">Accepts .txt only — one position name per line</p>
@@ -150,6 +164,17 @@
         this._setupEvents();
         await this._loadLocations();
         await this._loadPositionLocationSelect();
+        await this._loadTemplates();
+      },
+
+      async _loadTemplates() {
+        try {
+          const res = await fetch('/api/templates');
+          const templates = await res.json();
+          const opts = templates.map(t => '<option value="' + t.id + '">' + esc(t.name) + '</option>').join('');
+          document.getElementById('createPositionTemplate').innerHTML = '<option value="">-- Select Template --</option>' + opts;
+          document.getElementById('bulkImportTemplate').innerHTML = '<option value="">-- Select Template --</option>' + opts;
+        } catch (_) {}
       },
 
       _setupEvents() {
@@ -366,15 +391,9 @@
 
       async _createPosition() {
         const name = document.getElementById('newPositionName').value.trim();
+        const tplId = document.getElementById('createPositionTemplate').value;
         if (!name || !this.selectedSiteId) { this._toast('Position name required', 'error'); return; }
-        // Get first template to use
-        let tplId = null;
-        try {
-          const tplRes = await fetch('/api/templates');
-          const templates = await tplRes.json();
-          tplId = templates.length > 0 ? templates[0].id : null;
-        } catch (_) {}
-        if (!tplId) { this._toast('No template available. Create a template first.', 'error'); return; }
+        if (!tplId) { this._toast('Please select a template', 'error'); return; }
 
         try {
           const token = AUTH.getToken();
@@ -436,6 +455,8 @@
           this._toast('Select a location and upload a file first', 'error');
           return;
         }
+        const tplId = document.getElementById('bulkImportTemplate').value;
+        if (!tplId) { this._toast('Please select a template for the imported positions', 'error'); return; }
         const importBtn = document.getElementById('importBtn');
         importBtn.disabled = true;
         importBtn.textContent = 'Importing...';
@@ -445,7 +466,7 @@
           const res = await fetch('/api/positions/bulk-import', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (token || '') },
-            body: JSON.stringify({ site_id: parseInt(this.selectedSiteId), content: this.fileContent }),
+            body: JSON.stringify({ site_id: parseInt(this.selectedSiteId), content: this.fileContent, template_id: parseInt(tplId) }),
           });
           const data = await res.json();
           const resultDiv = document.getElementById('importResult');

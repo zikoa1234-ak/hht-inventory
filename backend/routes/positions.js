@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const db = require('../db');
-const { requireAuth, requireRole } = require('../middleware/auth');
+const { requireAuth, requireRole, optionalAuth } = require('../middleware/auth');
 
 const router = Router();
 
@@ -13,9 +13,18 @@ function computeStatus(serialNumber, assetTag) {
   return 'partial';
 }
 
-// GET /api/positions — list all positions with summary
-router.get('/', async (req, res) => {
+// GET /api/positions — list all positions with summary (filtered by user assignment)
+router.get('/', optionalAuth, async (req, res) => {
   try {
+    let userFilter = '';
+    const params = [];
+
+    // Non-admin users: only see assigned positions
+    if (req.user && req.user.role !== 'admin') {
+      userFilter = ` AND p.id IN (SELECT position_id FROM user_positions WHERE user_id = $${params.length + 1})`;
+      params.push(req.user.id);
+    }
+
     const { rows } = await db.query(
       `SELECT p.id, p.name, p.site_id, p.template_id, p.created_at, p.updated_at,
               s.name AS site_name,
@@ -28,8 +37,10 @@ router.get('/', async (req, res) => {
        JOIN sites s ON s.id = p.site_id
        JOIN position_templates pt ON pt.id = p.template_id
        LEFT JOIN position_components pc ON pc.position_id = p.id
+       WHERE 1=1${userFilter}
        GROUP BY p.id, s.name, pt.name
-       ORDER BY s.name, p.name`
+       ORDER BY s.name, p.name`,
+      params
     );
     res.json(rows);
   } catch (err) {
@@ -195,9 +206,19 @@ router.post('/bulk-import', requireAuth, requireRole('admin'), async (req, res) 
   }
 });
 
-// GET /api/positions/:id — single position with components
-router.get('/:id', async (req, res) => {
+// GET /api/positions/:id — single position with components (respects user assignment)
+router.get('/:id', optionalAuth, async (req, res) => {
   try {
+    // Non-admin users: check assignment
+    if (req.user && req.user.role !== 'admin') {
+      const access = await db.query(
+        'SELECT id FROM user_positions WHERE user_id = $1 AND position_id = $2',
+        [req.user.id, req.params.id]
+      );
+      if (access.rows.length === 0) {
+        return res.status(403).json({ error: 'Access denied. Position not assigned to you.' });
+      }
+    }
     const pos = await db.query(
       `SELECT p.*, s.name AS site_name, pt.name AS template_name
        FROM positions p

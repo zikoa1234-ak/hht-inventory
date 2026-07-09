@@ -99,6 +99,18 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at  TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
+-- ============================================================
+-- User-Position assignments (scoped access)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS user_positions (
+  id          SERIAL PRIMARY KEY,
+  user_id     INTEGER      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  position_id INTEGER      NOT NULL REFERENCES positions(id) ON DELETE CASCADE,
+  created_at  TIMESTAMP    NOT NULL DEFAULT NOW(),
+  assigned_by INTEGER      REFERENCES users(id),
+  UNIQUE(user_id, position_id)
+);
+
 -- Indexes for common queries
 CREATE INDEX IF NOT EXISTS idx_template_components_template_id ON template_components(template_id);
 CREATE INDEX IF NOT EXISTS idx_positions_site_id               ON positions(site_id);
