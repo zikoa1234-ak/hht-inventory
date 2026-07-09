@@ -89,4 +89,45 @@ router.delete('/:id', requireAuth, requireRole('admin'), async (req, res) => {
   }
 });
 
+// ── Site user assignment ─────────────────────────────────────
+
+// GET /api/sites/:id/users — list users assigned to this site
+router.get('/:id/users', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      'SELECT user_id FROM user_sites WHERE site_id = $1',
+      [req.params.id]
+    );
+    res.json(rows.map(r => r.user_id));
+  } catch (err) {
+    console.error('GET /sites/:id/users error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/sites/:id/users — add or remove a user from this site
+router.post('/:id/users', requireAuth, requireRole('admin'), async (req, res) => {
+  const { user_id, action } = req.body;
+  if (!user_id || !['add', 'remove'].includes(action)) {
+    return res.status(400).json({ error: 'user_id and action ("add"/"remove") are required' });
+  }
+  try {
+    if (action === 'add') {
+      await db.query(
+        'INSERT INTO user_sites (user_id, site_id, assigned_by) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+        [user_id, req.params.id, req.user.id]
+      );
+    } else {
+      await db.query(
+        'DELETE FROM user_sites WHERE user_id = $1 AND site_id = $2',
+        [user_id, req.params.id]
+      );
+    }
+    res.json({ message: `User ${action === 'add' ? 'added to' : 'removed from'} site` });
+  } catch (err) {
+    console.error('POST /sites/:id/users error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

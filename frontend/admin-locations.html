@@ -155,6 +155,13 @@
               <button class="btn btn--primary btn--full-width mt-8 hidden" id="importBtn">Import Positions</button>
               <div id="importResult"></div>
             </div>
+
+            <!-- Assigned Users -->
+            <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px;">
+              <h4 style="margin:0 0 8px 0;font-size:0.9rem;">Assigned Users</h4>
+              <p class="text-secondary text-sm" style="margin:0 0 8px 0;">Toggle which users can access this location.</p>
+              <div id="siteUsersList"><div class="empty-state-sm">Loading users...</div></div>
+            </div>
           </div>
         </div>
       </div>
@@ -231,6 +238,7 @@
           if (this.selectedSiteId) {
             document.getElementById('positionsPanel').classList.remove('hidden');
             this._loadPositions();
+            this._loadSiteUsers();
           } else {
             document.getElementById('positionsPanel').classList.add('hidden');
           }
@@ -454,6 +462,55 @@
           this._toast('Position deleted', 'success');
           this._loadPositions();
         }).catch(err => this._toast(err.message, 'error'));
+      },
+
+      // ===== SITE USER ASSIGNMENT =====
+
+      async _loadSiteUsers() {
+        const list = document.getElementById('siteUsersList');
+        const token = AUTH.getToken();
+        const headers = { 'Authorization': 'Bearer ' + (token || '') };
+        try {
+          const [usersRes, assignedRes] = await Promise.all([
+            fetch('/api/admin/users', { headers }),
+            fetch('/api/sites/' + this.selectedSiteId + '/users', { headers }),
+          ]);
+          const users = await usersRes.json();
+          const assignedIds = new Set(await assignedRes.json());
+
+          const nonAdmin = users.filter(u => u.role !== 'admin');
+          if (nonAdmin.length === 0) {
+            list.innerHTML = '<div class="empty-state-sm">No regular users to assign.</div>';
+            return;
+          }
+
+          list.innerHTML = nonAdmin.map(u => {
+            const has = assignedIds.has(u.id);
+            return '<div class="item-row">' +
+              '<div><span class="name">' + esc(u.username) + '</span></div>' +
+              '<button class="btn btn--sm ' + (has ? 'btn--primary' : 'btn--outline') + '" ' +
+                'onclick="LOCATIONS._toggleUser(' + u.id + ',' + (!has) + ')">' +
+                (has ? 'Assigned' : 'Assign') +
+              '</button>' +
+            '</div>';
+          }).join('');
+        } catch (err) {
+          list.innerHTML = '<div class="empty-state-sm">Error: ' + esc(err.message) + '</div>';
+        }
+      },
+
+      async _toggleUser(userId, assign) {
+        try {
+          const token = AUTH.getToken();
+          const res = await fetch('/api/sites/' + this.selectedSiteId + '/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (token || '') },
+            body: JSON.stringify({ user_id: userId, action: assign ? 'add' : 'remove' }),
+          });
+          if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+          this._toast('User ' + (assign ? 'assigned to' : 'removed from') + ' location', 'success');
+          this._loadSiteUsers();
+        } catch (err) { this._toast(err.message, 'error'); }
       },
 
       // ===== TXT IMPORT =====
