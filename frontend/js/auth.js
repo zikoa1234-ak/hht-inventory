@@ -119,6 +119,14 @@ const AUTH = {
   },
 };
 
+// HTML escaping helper (used by admin pages that don't load app.js)
+const esc = (s) => {
+  if (s === null || s === undefined) return '';
+  const d = document.createElement('div');
+  d.textContent = String(s);
+  return d.innerHTML;
+};
+
 // Initialize auth state on page load
 document.addEventListener('DOMContentLoaded', () => {
   AUTH._updateUI();
