@@ -19,9 +19,9 @@ router.get('/', optionalAuth, async (req, res) => {
     let userFilter = '';
     const params = [];
 
-    // Non-admin users: only see assigned positions
+    // Non-admin users: only see positions in their assigned sites
     if (req.user && req.user.role !== 'admin') {
-      userFilter = ` AND p.id IN (SELECT position_id FROM user_positions WHERE user_id = $${params.length + 1})`;
+      userFilter = ` AND p.site_id IN (SELECT site_id FROM user_sites WHERE user_id = $${params.length + 1})`;
       params.push(req.user.id);
     }
 
@@ -209,14 +209,14 @@ router.post('/bulk-import', requireAuth, requireRole('admin'), async (req, res) 
 // GET /api/positions/:id — single position with components (respects user assignment)
 router.get('/:id', optionalAuth, async (req, res) => {
   try {
-    // Non-admin users: check assignment
+    // Non-admin users: check site assignment
     if (req.user && req.user.role !== 'admin') {
       const access = await db.query(
-        'SELECT id FROM user_positions WHERE user_id = $1 AND position_id = $2',
+        'SELECT id FROM user_sites WHERE user_id = $1 AND site_id = (SELECT site_id FROM positions WHERE id = $2)',
         [req.user.id, req.params.id]
       );
       if (access.rows.length === 0) {
-        return res.status(403).json({ error: 'Access denied. Position not assigned to you.' });
+        return res.status(403).json({ error: 'Access denied. Site not assigned to you.' });
       }
     }
     const pos = await db.query(

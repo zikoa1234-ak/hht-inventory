@@ -100,15 +100,15 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- ============================================================
--- User-Position assignments (scoped access)
+-- User-Site assignments (scoped access by location)
 -- ============================================================
-CREATE TABLE IF NOT EXISTS user_positions (
+CREATE TABLE IF NOT EXISTS user_sites (
   id          SERIAL PRIMARY KEY,
   user_id     INTEGER      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  position_id INTEGER      NOT NULL REFERENCES positions(id) ON DELETE CASCADE,
+  site_id     INTEGER      NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
   created_at  TIMESTAMP    NOT NULL DEFAULT NOW(),
   assigned_by INTEGER      REFERENCES users(id),
-  UNIQUE(user_id, position_id)
+  UNIQUE(user_id, site_id)
 );
 
 -- Indexes for common queries

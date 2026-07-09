@@ -131,51 +131,48 @@ router.delete('/users/:id', async (req, res) => {
   }
 });
 
-// ── Position assignment ──────────────────────────────────────────
+// ── Site assignment (scoped access by location) ──────────────────
 
-// GET /api/admin/users/:id/positions — get assigned positions for a user
-router.get('/users/:id/positions', async (req, res) => {
+// GET /api/admin/users/:id/sites — get assigned sites for a user
+router.get('/users/:id/sites', async (req, res) => {
   try {
     const { rows } = await db.query(`
-      SELECT up.id, up.position_id, up.created_at AS assigned_at,
-             p.name AS position_name, s.name AS site_name, s.id AS site_id
-      FROM user_positions up
-      JOIN positions p ON p.id = up.position_id
-      JOIN sites s ON s.id = p.site_id
-      WHERE up.user_id = $1
-      ORDER BY s.name, p.name
+      SELECT us.id, us.site_id, us.created_at AS assigned_at,
+             s.name AS site_name
+      FROM user_sites us
+      JOIN sites s ON s.id = us.site_id
+      WHERE us.user_id = $1
+      ORDER BY s.name
     `, [req.params.id]);
     res.json(rows);
   } catch (err) {
-    console.error('GET /admin/users/:id/positions error:', err);
+    console.error('GET /admin/users/:id/sites error:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// PUT /api/admin/users/:id/positions — replace assigned positions for a user
-router.put('/users/:id/positions', async (req, res) => {
-  const { position_ids } = req.body;
-  if (!Array.isArray(position_ids)) {
-    return res.status(400).json({ error: 'position_ids array is required' });
+// PUT /api/admin/users/:id/sites — replace assigned sites for a user
+router.put('/users/:id/sites', async (req, res) => {
+  const { site_ids } = req.body;
+  if (!Array.isArray(site_ids)) {
+    return res.status(400).json({ error: 'site_ids array is required' });
   }
 
   const client = await db.pool.connect();
   try {
     await client.query('BEGIN');
-    // Remove all existing assignments
-    await client.query('DELETE FROM user_positions WHERE user_id = $1', [req.params.id]);
-    // Insert new assignments
-    for (const pid of position_ids) {
+    await client.query('DELETE FROM user_sites WHERE user_id = $1', [req.params.id]);
+    for (const sid of site_ids) {
       await client.query(
-        'INSERT INTO user_positions (user_id, position_id, assigned_by) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
-        [req.params.id, pid, req.user.id]
+        'INSERT INTO user_sites (user_id, site_id, assigned_by) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+        [req.params.id, sid, req.user.id]
       );
     }
     await client.query('COMMIT');
-    res.json({ message: `Assigned ${position_ids.length} position(s) to user` });
+    res.json({ message: `Assigned ${site_ids.length} site(s) to user` });
   } catch (err) {
     await client.query('ROLLBACK');
-    console.error('PUT /admin/users/:id/positions error:', err);
+    console.error('PUT /admin/users/:id/sites error:', err);
     res.status(500).json({ error: err.message });
   } finally {
     client.release();

@@ -146,24 +146,24 @@
     </div>
   </div>
 
-  <!-- Assign Positions Modal -->
-  <div id="assignPositionsOverlay" class="modal-overlay hidden">
+  <!-- Assign Sites Modal -->
+  <div id="assignSitesOverlay" class="modal-overlay hidden">
     <div class="modal-panel modal-lg">
       <div class="modal-header">
-        <h3 id="assignPositionsTitle">Assign Positions to User</h3>
+        <h3 id="assignSitesTitle">Assign Locations to User</h3>
         <button class="btn btn--sm btn--outline modal-close-btn">&times;</button>
       </div>
       <div class="modal-body">
-        <p class="text-secondary text-sm">Select positions this user can access. Uncheck to remove access.</p>
-        <div id="assignPositionsList" style="max-height:400px;overflow-y:auto;">
-          <div class="loading-spinner">Loading positions...</div>
+        <p class="text-secondary text-sm">Select locations this user can access. The user will only see positions within these locations.</p>
+        <div id="assignSitesList" style="max-height:400px;overflow-y:auto;">
+          <div class="loading-spinner">Loading locations...</div>
         </div>
-        <input type="hidden" id="assignPositionsUserId" value="">
-        <div id="assignPositionsError" class="field-error hidden"></div>
+        <input type="hidden" id="assignSitesUserId" value="">
+        <div id="assignSitesError" class="field-error hidden"></div>
       </div>
       <div class="modal-footer">
         <button class="btn btn--outline modal-close-btn">Cancel</button>
-        <button class="btn btn--primary" id="saveAssignPositionsBtn">Save Assignments</button>
+        <button class="btn btn--primary" id="saveAssignSitesBtn">Save Assignments</button>
       </div>
     </div>
   </div>
@@ -188,7 +188,7 @@
         // Back button
         // Add user modal
         this._setupAddUserModal();
-        this._setupAssignPositionsModal();
+        this._setupAssignSitesModal();
 
         // Load data
         await this._loadStats();
@@ -218,15 +218,15 @@
         submitBtn.addEventListener('click', () => this._createUser());
       },
 
-      _setupAssignPositionsModal() {
-        const overlay = document.getElementById('assignPositionsOverlay');
+      _setupAssignSitesModal() {
+        const overlay = document.getElementById('assignSitesOverlay');
         overlay.querySelectorAll('.modal-close-btn').forEach(btn => {
           btn.addEventListener('click', () => overlay.classList.add('hidden'));
         });
         overlay.addEventListener('click', (e) => {
           if (e.target === overlay) overlay.classList.add('hidden');
         });
-        document.getElementById('saveAssignPositionsBtn').addEventListener('click', () => this._saveAssignPositions());
+        document.getElementById('saveAssignSitesBtn').addEventListener('click', () => this._saveAssignSites());
       },
 
       async _createUser() {
@@ -321,7 +321,7 @@
                               : '')
                           ) +
                           (!isSelf
-                            ? '<button class="btn btn--sm btn--outline" onclick="ADMIN._openAssignPositions(' + u.id + ')">Positions</button>'
+                            ? '<button class="btn btn--sm btn--outline" onclick="ADMIN._openAssignSites(' + u.id + ')">Locations</button>'
                             : '') +
                           (!isSelf
                             ? '<button class="btn btn--sm btn--danger" onclick="ADMIN._deleteUser(' + u.id + ')">Delete</button>'
@@ -369,60 +369,59 @@
         });
       },
 
-      // ===== POSITION ASSIGNMENT =====
+      // ===== SITE ASSIGNMENT =====
 
-      _openAssignPositions(userId) {
-        document.getElementById('assignPositionsUserId').value = userId;
-        document.getElementById('assignPositionsError').classList.add('hidden');
-        document.getElementById('assignPositionsOverlay').classList.remove('hidden');
-        this._loadAssignPositions(userId);
+      _openAssignSites(userId) {
+        document.getElementById('assignSitesUserId').value = userId;
+        document.getElementById('assignSitesError').classList.add('hidden');
+        document.getElementById('assignSitesOverlay').classList.remove('hidden');
+        this._loadAssignSites(userId);
       },
 
-      async _loadAssignPositions(userId) {
-        const list = document.getElementById('assignPositionsList');
+      async _loadAssignSites(userId) {
+        const list = document.getElementById('assignSitesList');
         const token = AUTH.getToken();
         const headers = { 'Authorization': 'Bearer ' + (token || '') };
         try {
-          // Fetch all positions and user's assigned positions in parallel
-          const [posRes, assignedRes] = await Promise.all([
-            fetch('/api/positions', { headers }),
-            fetch('/api/admin/users/' + userId + '/positions', { headers }),
+          const [sitesRes, assignedRes] = await Promise.all([
+            fetch('/api/sites', { headers }),
+            fetch('/api/admin/users/' + userId + '/sites', { headers }),
           ]);
-          const allPositions = await posRes.json();
+          const allSites = await sitesRes.json();
           const assigned = await assignedRes.json();
-          const assignedIds = new Set(assigned.map(a => a.position_id));
+          const assignedIds = new Set(assigned.map(a => a.site_id));
 
-          list.innerHTML = allPositions.map(p => {
-            const checked = assignedIds.has(p.id) ? 'checked' : '';
+          list.innerHTML = allSites.map(s => {
+            const checked = assignedIds.has(s.id) ? 'checked' : '';
             return '<label class="assign-pos-item">' +
-              '<input type="checkbox" class="pos-checkbox" value="' + p.id + '" ' + checked + '>' +
-              '<span>' + esc(p.site_name) + ' / <strong>' + esc(p.name) + '</strong> <span class="badge">' + esc(p.template_name || '') + '</span></span>' +
+              '<input type="checkbox" class="site-checkbox" value="' + s.id + '" ' + checked + '>' +
+              '<span><strong>' + esc(s.name) + '</strong></span>' +
               '</label>';
           }).join('');
 
-          if (allPositions.length === 0) {
-            list.innerHTML = '<div class="empty-state-sm">No positions yet. Create positions first.</div>';
+          if (allSites.length === 0) {
+            list.innerHTML = '<div class="empty-state-sm">No locations yet.</div>';
           }
         } catch (err) {
           list.innerHTML = '<div class="empty-state-sm">Error: ' + esc(err.message) + '</div>';
         }
       },
 
-      _saveAssignPositions() {
-        const userId = document.getElementById('assignPositionsUserId').value;
-        const checkboxes = document.querySelectorAll('#assignPositionsList .pos-checkbox:checked');
-        const positionIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
-        const errorEl = document.getElementById('assignPositionsError');
+      _saveAssignSites() {
+        const userId = document.getElementById('assignSitesUserId').value;
+        const checkboxes = document.querySelectorAll('#assignSitesList .site-checkbox:checked');
+        const siteIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        const errorEl = document.getElementById('assignSitesError');
 
         const token = AUTH.getToken();
-        fetch('/api/admin/users/' + userId + '/positions', {
+        fetch('/api/admin/users/' + userId + '/sites', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (token || '') },
-          body: JSON.stringify({ position_ids: positionIds }),
+          body: JSON.stringify({ site_ids: siteIds }),
         }).then(r => {
           if (!r.ok) return r.json().then(d => { throw new Error(d.error); });
-          document.getElementById('assignPositionsOverlay').classList.add('hidden');
-          this._showToast('Position assignments saved (' + positionIds.length + ' positions)', 'success');
+          document.getElementById('assignSitesOverlay').classList.add('hidden');
+          this._showToast('Site assignments saved (' + siteIds.length + ' locations)', 'success');
         }).catch(err => {
           errorEl.textContent = err.message;
           errorEl.classList.remove('hidden');
