@@ -425,10 +425,14 @@
   <script src="js/screens/positions.js"></script>
   <script src="js/app.js"></script>
   <script>
-    // Populate the people datalist once the DOM is ready
+    // Populate the people datalist once the DOM is ready and the list is loaded
     document.addEventListener('DOMContentLoaded', function () {
-      if (typeof populatePeopleDatalist !== 'undefined') {
-        populatePeopleDatalist('peopleList');
+      if (typeof initPeople !== 'undefined') {
+        initPeople().then(function () {
+          if (typeof populatePeopleDatalist !== 'undefined') {
+            populatePeopleDatalist('peopleList');
+          }
+        });
       }
     });
   </script>

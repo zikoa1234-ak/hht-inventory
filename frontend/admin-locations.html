@@ -186,6 +186,9 @@
         document.getElementById('adminUserBadge').textContent = user.username + ' [Admin]';
         document.getElementById('adminLogoutBtn').addEventListener('click', () => AUTH.logout());
 
+        // Load the dynamic people list from backend first
+        await initPeople();
+
         this._setupEvents();
         await this._loadLocations();
         await this._loadPositionLocationSelect();

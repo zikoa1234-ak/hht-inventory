@@ -53,6 +53,7 @@ app.use('/api/models', requireAuth, require('./routes/models'));
 app.use('/api/export', requireAuth, require('./routes/export'));
 app.use('/api/assets', requireAuth, require('./routes/assets'));
 app.use('/api/sessions', requireAuth, require('./routes/sessions'));
+app.use('/api/people', requireAuth, require('./routes/people'));
 
 // Health check — public
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));

@@ -5,9 +5,12 @@
    throughout the application. Import this file in index.html
    (before any screen modules) to make ASSIGNED_PEOPLE and
    related helpers available globally.
+
+   The list is fetched from the backend on init. If the API
+   call fails, a hardcoded fallback list is used.
    ============================================================ */
 
-const ASSIGNED_PEOPLE = [
+var FALLBACK_PEOPLE = [
   'KAMAL BOURROU',
   'MOHAMED ALI KAMAL',
   'SOUFIYAN BELFAQIR',
@@ -29,9 +32,34 @@ const ASSIGNED_PEOPLE = [
   'ALI FARBOUSSI',
 ];
 
+// Start empty — populated by initPeople() on page load
+var ASSIGNED_PEOPLE = [];
+
+/**
+ * Initialize the people list from the backend API.
+ * Falls back to the hardcoded list if the API call fails.
+ * Call this once on page load and await it before using ASSIGNED_PEOPLE.
+ * @returns {Promise<string[]>}
+ */
+function initPeople() {
+  return fetch('/api/people')
+    .then(function (res) {
+      if (!res.ok) throw new Error('API returned ' + res.status);
+      return res.json();
+    })
+    .then(function (names) {
+      ASSIGNED_PEOPLE = names;
+      return ASSIGNED_PEOPLE;
+    })
+    .catch(function (err) {
+      console.warn('Failed to load people from API, using fallback list:', err.message);
+      ASSIGNED_PEOPLE = FALLBACK_PEOPLE.slice();
+      return ASSIGNED_PEOPLE;
+    });
+}
+
 /**
  * Populate a <datalist> element with all person names.
- * Call this once on page load.
  * @param {string} datalistId - The id of the <datalist> element
  */
 function populatePeopleDatalist(datalistId) {
