@@ -126,6 +126,17 @@ var App = {
     if (typeof TemplatesScreen !== 'undefined' && TemplatesScreen.init) TemplatesScreen.init();
     if (typeof PositionsScreen !== 'undefined' && PositionsScreen.init) PositionsScreen.init();
 
+    // Load dynamic people list from backend (only after login)
+    if (AUTH.isLoggedIn()) {
+      if (typeof initPeople !== 'undefined') {
+        initPeople().then(function () {
+          if (typeof populatePeopleDatalist !== 'undefined') {
+            populatePeopleDatalist('peopleList');
+          }
+        });
+      }
+    }
+
     // ---- DOM cache ----
     this.siteSelect = document.getElementById('siteSelect');
     this.templateSelect = document.getElementById('templateSelect');
@@ -243,6 +254,14 @@ var App = {
       if (errorEl) errorEl.classList.add('hidden');
       AppHelpers.toast('Logged in as ' + username, 'success');
       this._forceLogin = false;
+      // Load dynamic people list now that user is logged in
+      if (typeof initPeople !== 'undefined') {
+        initPeople().then(function () {
+          if (typeof populatePeopleDatalist !== 'undefined') {
+            populatePeopleDatalist('peopleList');
+          }
+        });
+      }
       await this.refreshDashboard();
     } catch (err) {
       if (errorEl) { errorEl.textContent = err.message; errorEl.classList.remove('hidden'); }
