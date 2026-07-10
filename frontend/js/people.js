@@ -42,7 +42,7 @@ var ASSIGNED_PEOPLE = [];
  * @returns {Promise<string[]>}
  */
 function initPeople() {
-  return fetch('/api/people')
+  return fetch('/api/people', { headers: authHeaders() })
     .then(function (res) {
       if (!res.ok) throw new Error('API returned ' + res.status);
       return res.json();
