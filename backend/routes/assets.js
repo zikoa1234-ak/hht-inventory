@@ -8,7 +8,7 @@ const router = Router();
 const ALLOWED_ASSET_STATUSES = ['Active', 'In Repair', 'In Stock', 'Retired'];
 
 // Allowed item categories
-const ALLOWED_ITEM_CATEGORIES = ['position', 'spare', 'switch_router'];
+const ALLOWED_ITEM_CATEGORIES = ['position', 'spare'];
 
 // Helper: validate asset tag starts with XS (case-insensitive)
 function validateAssetTag(tag) {
@@ -205,8 +205,8 @@ router.post('/', async (req, res) => {
       }
     }
 
-    // Validate asset tag prefix (must start with XS) — only for position assets
-    if (category === 'position') {
+    // Validate asset tag prefix (must start with XS) — for all categories
+    if (asset_tag && asset_tag.trim()) {
       const tagError = validateAssetTag(asset_tag);
       if (tagError) {
         return res.status(400).json({ error: tagError });
@@ -227,8 +227,8 @@ router.post('/', async (req, res) => {
       }
       compName = position || 'Asset';
     } else {
-      // spare / switch_router: use model name or category as component_name
-      compName = custom_model || 'Inventory Item';
+      // spare: accept optional position field
+      compName = position || 'Spare Item';
     }
 
     // Map model_id: use the provided ID or null

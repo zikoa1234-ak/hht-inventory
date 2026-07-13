@@ -162,7 +162,7 @@ const api = {
     }
   },
 
-  // --- Items by Category (spare, switch_router, etc.) ---
+  // --- Items by Category (spare, etc.) ---
   /** List items filtered by category */
   getItemsByCategory(category) {
     return this.request('GET', `/assets?item_category=${encodeURIComponent(category)}`).then(r => r.json());
@@ -171,10 +171,5 @@ const api = {
   /** Create a spare item */
   createSpareItem(data) {
     return this.request('POST', '/assets', { ...data, item_category: 'spare' }).then(r => r.json());
-  },
-
-  /** Create a switch/router item */
-  createSwitchItem(data) {
-    return this.request('POST', '/assets', { ...data, item_category: 'switch_router' }).then(r => r.json());
   },
 };

@@ -134,6 +134,7 @@ var App = {
         initPeople().then(function () {
           if (typeof populatePeopleDatalist !== 'undefined') {
             populatePeopleDatalist('peopleList');
+            populatePeopleDatalist('sparePeopleList');
           }
         });
       }
@@ -216,27 +217,41 @@ var App = {
       });
     }
 
-    // ===== NEW 3-CARD SELECTION =====
+    // ===== 2-CARD SELECTION =====
     // Card click handlers
-    document.getElementById('selectSpareCard').addEventListener('click', function () {
-      AppHelpers.showScreen('spare-entry');
-      App._initSpareForm();
-    });
     document.getElementById('selectPositionCard').addEventListener('click', function () {
       AppHelpers.showScreen('dashboard');
       App.refreshDashboard();
     });
-    document.getElementById('selectSwitchCard').addEventListener('click', function () {
-      AppHelpers.showScreen('switch-entry');
-      App._initSwitchForm();
+    document.getElementById('selectSpareCard').addEventListener('click', function () {
+      AppHelpers.showScreen('spare-entry');
+      App._initSpareForm();
     });
 
-    // Back buttons
+    // Spare back button
     document.getElementById('spareBackBtn').addEventListener('click', function () {
       AppHelpers.showScreen('selection');
     });
-    document.getElementById('switchBackBtn').addEventListener('click', function () {
-      AppHelpers.showScreen('selection');
+
+    // Spare "ToList" button — go to spare list
+    document.getElementById('spareToListBtn').addEventListener('click', function () {
+      AppHelpers.showScreen('spare-list');
+      App._loadSpareList();
+    });
+
+    // Spare list back button
+    document.getElementById('spareListBackBtn').addEventListener('click', function () {
+      AppHelpers.showScreen('spare-entry');
+    });
+
+    // Spare export button
+    document.getElementById('exportSpareBtn').addEventListener('click', function () {
+      App._exportSpareList();
+    });
+
+    // Spare search input
+    document.getElementById('spareSearchInput').addEventListener('input', function () {
+      App._loadSpareList();
     });
 
     // Spare form save
@@ -244,29 +259,14 @@ var App = {
       App._saveSpareItem();
     });
 
-    // Switch form save
-    document.getElementById('saveSwitchBtn').addEventListener('click', function () {
-      App._saveSwitchItem();
-    });
-
     // Show/hide custom model required indicator on spare form
     document.getElementById('spareModelSelect').addEventListener('change', function () {
-      var requiredStar = document.getElementById('spareCustomModelRequired');
-      if (this.value === '') {
-        requiredStar.classList.remove('hidden');
-      } else {
-        requiredStar.classList.add('hidden');
-      }
+      // Model is optional — no required indicator needed
     });
 
-    // Show/hide custom model required indicator on switch form
-    document.getElementById('switchModelSelect').addEventListener('change', function () {
-      var requiredStar = document.getElementById('switchCustomModelRequired');
-      if (this.value === '') {
-        requiredStar.classList.remove('hidden');
-      } else {
-        requiredStar.classList.add('hidden');
-      }
+    // Spare asset tag validation on input
+    document.getElementById('spareAssetTag').addEventListener('input', function () {
+      App._validateSpareAssetTag();
     });
 
     // Serial number Enter key advances to asset tag on spare form
@@ -276,11 +276,12 @@ var App = {
         document.getElementById('spareAssetTag').focus();
       }
     });
-    // Serial number Enter key advances to asset tag on switch form
-    document.getElementById('switchSerialNumber').addEventListener('keydown', function (e) {
+
+    // Asset tag Enter key saves the spare form
+    document.getElementById('spareAssetTag').addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        document.getElementById('switchAssetTag').focus();
+        App._saveSpareItem();
       }
     });
 
@@ -330,7 +331,6 @@ var App = {
           if (typeof populatePeopleDatalist !== 'undefined') {
             populatePeopleDatalist('peopleList');
             populatePeopleDatalist('sparePeopleList');
-            populatePeopleDatalist('switchPeopleList');
           }
         });
       }
@@ -790,13 +790,13 @@ var App = {
     }
   },
 
-  // ===== SPARE & SWITCH FORM METHODS =====
+  // ===== SPARE FORM METHODS =====
 
   /** Load models into a select element */
   _loadModelsIntoSelect: function (selectId) {
     var sel = document.getElementById(selectId);
     if (!sel) return;
-    sel.innerHTML = '<option value="">-- Select Model --</option>';
+    sel.innerHTML = '<option value="">-- Select Model (optional) --</option>';
     var models = AppState.models || [];
     if (models.length === 0) {
       AppState.loadModels().then(function (m) {
@@ -824,21 +824,27 @@ var App = {
     document.getElementById('spareAssetTag').value = '';
     document.getElementById('spareCustomModel').value = '';
     document.getElementById('spareAssignedPerson').value = '';
+    document.getElementById('spareNotes').value = '';
+    document.getElementById('sparePositionSelect').value = '';
     document.getElementById('spareSaveStatus').className = 'save-status';
     document.getElementById('spareSaveStatus').textContent = '';
+    document.getElementById('spareAssetTagError').classList.add('hidden');
     document.getElementById('spareSerialNumber').focus();
   },
 
-  /** Initialize the switch/router entry form */
-  _initSwitchForm: function () {
-    this._loadModelsIntoSelect('switchModelSelect');
-    document.getElementById('switchSerialNumber').value = '';
-    document.getElementById('switchAssetTag').value = '';
-    document.getElementById('switchCustomModel').value = '';
-    document.getElementById('switchAssignedPerson').value = '';
-    document.getElementById('switchSaveStatus').className = 'save-status';
-    document.getElementById('switchSaveStatus').textContent = '';
-    document.getElementById('switchSerialNumber').focus();
+  /** Validate spare asset tag starts with XS */
+  _validateSpareAssetTag: function () {
+    var tag = document.getElementById('spareAssetTag').value.trim();
+    var errorEl = document.getElementById('spareAssetTagError');
+    if (!tag) {
+      errorEl.classList.add('hidden');
+      return;
+    }
+    if (!/^xs/i.test(tag)) {
+      errorEl.classList.remove('hidden');
+    } else {
+      errorEl.classList.add('hidden');
+    }
   },
 
   /** Save a spare item */
@@ -848,7 +854,10 @@ var App = {
     var serialNumber = document.getElementById('spareSerialNumber').value.trim();
     var assetTag = document.getElementById('spareAssetTag').value.trim();
     var assignedPerson = document.getElementById('spareAssignedPerson').value.trim();
+    var position = document.getElementById('sparePositionSelect').value;
+    var notes = document.getElementById('spareNotes').value.trim();
     var statusEl = document.getElementById('spareSaveStatus');
+    var tagErrorEl = document.getElementById('spareAssetTagError');
 
     // Validation
     if (!serialNumber) {
@@ -857,12 +866,16 @@ var App = {
       return;
     }
 
-    var modelId = modelSelect.value || null;
-    if (!modelId && !customModel) {
+    // Validate asset tag starts with XS
+    if (assetTag && !/^xs/i.test(assetTag)) {
+      tagErrorEl.classList.remove('hidden');
       statusEl.className = 'save-status error';
-      statusEl.textContent = 'Please select a model or type a custom model name';
+      statusEl.textContent = 'Asset tag must start with XS (e.g., XS12345)';
       return;
     }
+
+    var modelId = modelSelect.value || null;
+    // Model is optional — no validation required
 
     statusEl.className = 'save-status pending';
     statusEl.textContent = 'Saving...';
@@ -874,6 +887,8 @@ var App = {
         custom_model: customModel || null,
         asset_tag: assetTag || null,
         assigned_person: assignedPerson || null,
+        position: position || null,
+        notes: notes || null,
       };
       await api.createSpareItem(data);
       statusEl.className = 'save-status success';
@@ -883,8 +898,10 @@ var App = {
       document.getElementById('spareAssetTag').value = '';
       document.getElementById('spareCustomModel').value = '';
       document.getElementById('spareAssignedPerson').value = '';
+      document.getElementById('spareNotes').value = '';
+      document.getElementById('sparePositionSelect').value = '';
+      tagErrorEl.classList.add('hidden');
       modelSelect.value = '';
-      document.getElementById('spareCustomModelRequired').classList.remove('hidden');
       document.getElementById('spareSerialNumber').focus();
       setTimeout(function () {
         statusEl.className = 'save-status';
@@ -896,60 +913,91 @@ var App = {
     }
   },
 
-  /** Save a switch/router item */
-  _saveSwitchItem: async function () {
-    var modelSelect = document.getElementById('switchModelSelect');
-    var customModel = document.getElementById('switchCustomModel').value.trim();
-    var serialNumber = document.getElementById('switchSerialNumber').value.trim();
-    var assetTag = document.getElementById('switchAssetTag').value.trim();
-    var assignedPerson = document.getElementById('switchAssignedPerson').value.trim();
-    var switchType = document.getElementById('switchTypeSelect').value;
-    var statusEl = document.getElementById('switchSaveStatus');
+  // ===== SPARE LIST =====
+  _spareCache: [],
 
-    // Validation
-    if (!serialNumber) {
-      statusEl.className = 'save-status error';
-      statusEl.textContent = 'Serial number is required';
-      return;
-    }
+  async _loadSpareList() {
+    var tbody = document.getElementById('spareTableBody');
+    var searchInput = document.getElementById('spareSearchInput');
+    if (!tbody) return;
 
-    var modelId = modelSelect.value || null;
-    if (!modelId && !customModel) {
-      statusEl.className = 'save-status error';
-      statusEl.textContent = 'Please select a model or type a custom model name';
-      return;
-    }
-
-    statusEl.className = 'save-status pending';
-    statusEl.textContent = 'Saving...';
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Loading spare items...</td></tr>';
 
     try {
-      var data = {
-        serial_number: serialNumber,
-        model_id: modelId ? parseInt(modelId) : null,
-        custom_model: customModel || null,
-        asset_tag: assetTag || null,
-        assigned_person: assignedPerson || null,
-      };
-      await api.createSwitchItem(data);
-      statusEl.className = 'save-status success';
-      statusEl.textContent = switchType.charAt(0).toUpperCase() + switchType.slice(1) + ' saved successfully!';
-      // Clear form for next entry
-      document.getElementById('switchSerialNumber').value = '';
-      document.getElementById('switchAssetTag').value = '';
-      document.getElementById('switchCustomModel').value = '';
-      document.getElementById('switchAssignedPerson').value = '';
-      modelSelect.value = '';
-      document.getElementById('switchCustomModelRequired').classList.remove('hidden');
-      document.getElementById('switchSerialNumber').focus();
-      setTimeout(function () {
-        statusEl.className = 'save-status';
-        statusEl.textContent = '';
-      }, 3000);
+      var params = new URLSearchParams();
+      params.set('item_category', 'spare');
+      var search = searchInput ? searchInput.value.trim() : '';
+      if (search) params.set('search', search);
+
+      var res = await fetch('/api/assets?' + params.toString(), { headers: authHeaders() });
+      var items = await res.json();
+      this._spareCache = items;
+      this._renderSpareList(items);
     } catch (err) {
-      statusEl.className = 'save-status error';
-      statusEl.textContent = err.message;
+      this.log('Failed to load spare list:', err.message);
+      tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Error loading spare items: ' + esc(err.message) + '</td></tr>';
     }
+  },
+
+  _renderSpareList(items) {
+    var tbody = document.getElementById('spareTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (!items || items.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No spare items found. Register spare items from the form.</td></tr>';
+      return;
+    }
+
+    items.forEach(function (item, idx) {
+      var tr = document.createElement('tr');
+      var modelName = item.custom_model || item.model_name || '';
+      tr.innerHTML =
+        '<td>' + (idx + 1) + '</td>' +
+        '<td>' + esc(modelName) + '</td>' +
+        '<td class="mono">' + esc(item.serial_number || '') + '</td>' +
+        '<td class="mono">' + esc(item.asset_tag || '') + '</td>' +
+        '<td>' + esc(item.component_name || '') + '</td>' +
+        '<td>' + esc(item.assigned_person || '') + '</td>' +
+        '<td class="text-sm">' + esc((item.notes || '').substring(0, 40)) + '</td>' +
+        '<td class="text-secondary text-sm">' + (item.created_at ? new Date(item.created_at).toLocaleDateString() : '') + '</td>';
+      tbody.appendChild(tr);
+    });
+  },
+
+  _exportSpareList() {
+    var items = this._spareCache || [];
+    if (items.length === 0) {
+      AppHelpers.toast('No spare items to export', 'warning');
+      return;
+    }
+
+    // Build CSV
+    var headers = ['serialNumber', 'model', 'customModel', 'assetTag', 'position', 'assignedPerson', 'notes', 'createdAt'];
+    var csvRows = items.map(function (item) {
+      return [
+        csvField(item.serial_number || ''),
+        csvField(item.model_name || ''),
+        csvField(item.custom_model || ''),
+        csvField(item.asset_tag || ''),
+        csvField(item.component_name || ''),
+        csvField(item.assigned_person || ''),
+        csvField(item.notes || ''),
+        csvField(item.created_at || ''),
+      ].join(',');
+    });
+    var csv = [headers.join(','), ...csvRows].join('\n');
+
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'spare_items.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+    AppHelpers.toast('Downloading spare CSV...', 'success');
   },
 
   // ===== SETTINGS =====
@@ -985,6 +1033,16 @@ var App = {
     overlay.classList.remove('hidden');
   },
 };
+
+// CSV field helper for spare export
+function csvField(val) {
+  if (val === null || val === undefined) return '';
+  var s = String(val);
+  if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
 
 // ===== BOOT =====
 document.addEventListener('DOMContentLoaded', function () {

@@ -22,7 +22,7 @@
       </div>
     </nav>
 
-    <!-- ====== MAIN SELECTION (3 Cards) ====== -->
+    <!-- ====== MAIN SELECTION (2 Cards) ====== -->
     <section id="screen-selection" class="screen active">
       <div class="selection-header">
         <h2>HHT Inventory</h2>
@@ -30,13 +30,6 @@
       </div>
 
       <div class="selection-grid">
-        <!-- Spare Card -->
-        <div class="selection-card" id="selectSpareCard">
-          <div class="selection-card-icon">&#128230;</div>
-          <div class="selection-card-title">Spare</div>
-          <div class="selection-card-subtitle">Register spare parts &amp; loose items</div>
-        </div>
-
         <!-- Position Card -->
         <div class="selection-card" id="selectPositionCard">
           <div class="selection-card-icon">&#9879;</div>
@@ -44,11 +37,11 @@
           <div class="selection-card-subtitle">Site &amp; position based asset tracking</div>
         </div>
 
-        <!-- Switch / Routers Card -->
-        <div class="selection-card" id="selectSwitchCard">
-          <div class="selection-card-icon">&#128252;</div>
-          <div class="selection-card-title">Switch / Routers</div>
-          <div class="selection-card-subtitle">Register network equipment</div>
+        <!-- Spare Card -->
+        <div class="selection-card" id="selectSpareCard">
+          <div class="selection-card-icon">&#128230;</div>
+          <div class="selection-card-title">Spare</div>
+          <div class="selection-card-subtitle">Register spare parts &amp; loose items</div>
         </div>
       </div>
     </section>
@@ -58,19 +51,20 @@
       <div class="screen-back-header">
         <button class="btn btn--outline btn--sm" id="spareBackBtn">&larr; Back</button>
         <h2>Register Spare Item</h2>
+        <button class="btn btn--sm btn--secondary" id="spareToListBtn">List</button>
       </div>
 
       <div class="card mt-8">
         <div class="card-body">
           <div class="form-group">
-            <label class="form-label">Model <span class="required-star">*</span></label>
+            <label class="form-label">Model</label>
             <select id="spareModelSelect" class="form-control">
-              <option value="">-- Select Model --</option>
+              <option value="">-- Select Model (optional) --</option>
             </select>
           </div>
 
           <div class="form-group">
-            <label class="form-label">Or type custom model <span id="spareCustomModelRequired" class="required-star hidden">*</span></label>
+            <label class="form-label">Custom Model</label>
             <input type="text" id="spareCustomModel" class="form-control" placeholder="Model not found? Type here...">
           </div>
 
@@ -80,8 +74,21 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">Asset Tag</label>
-            <input type="text" id="spareAssetTag" class="form-control" placeholder="Optional asset tag">
+            <label class="form-label">Asset Tag <span class="text-secondary text-sm">(must start with XS)</span></label>
+            <input type="text" id="spareAssetTag" class="form-control input-scan" placeholder="Scan or type asset tag (XS...)...">
+            <div id="spareAssetTagError" class="field-error hidden">Asset tag must start with XS (e.g., XS12345 or xs12345)</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Position</label>
+            <select id="sparePositionSelect" class="form-control">
+              <option value="">-- Select Position (optional) --</option>
+              <option value="BRS-OFFICE">BRS-OFFICE</option>
+              <option value="TECH-OFFICE">TECH-OFFICE</option>
+              <option value="PASSAGE-SERVICE">PASSAGE-SERVICE</option>
+              <option value="T1-AIRCOM">T1-AIRCOM</option>
+              <option value="ING-OFFICE">ING-OFFICE</option>
+            </select>
           </div>
 
           <div class="form-group">
@@ -90,6 +97,11 @@
                    list="sparePeopleList" placeholder="Type or select a name..."
                    autocomplete="off">
             <datalist id="sparePeopleList"></datalist>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Notes / Comments</label>
+            <textarea id="spareNotes" class="form-control" rows="2" placeholder="Add any notes or comments..."></textarea>
           </div>
 
           <div class="scan-panel-actions">
@@ -101,59 +113,41 @@
       </div>
     </section>
 
-    <!-- ====== SWITCH / ROUTER ENTRY FORM ====== -->
-    <section id="screen-switch-entry" class="screen">
+    <!-- ====== SPARE LIST ====== -->
+    <section id="screen-spare-list" class="screen">
       <div class="screen-back-header">
-        <button class="btn btn--outline btn--sm" id="switchBackBtn">&larr; Back</button>
-        <h2>Register Switch / Router</h2>
+        <button class="btn btn--outline btn--sm" id="spareListBackBtn">&larr; Back</button>
+        <h2>Spare Items</h2>
+        <div class="header-actions">
+          <button class="btn btn--sm btn--secondary" id="exportSpareBtn">Export CSV</button>
+        </div>
       </div>
 
       <div class="card mt-8">
-        <div class="card-body">
-          <div class="form-group">
-            <label class="form-label">Category / Type</label>
-            <select id="switchTypeSelect" class="form-control">
-              <option value="switch_router">Switch / Router</option>
-              <option value="switch">Switch</option>
-              <option value="router">Router</option>
-            </select>
+        <div class="card-header">
+          <h3>All Spare Items</h3>
+          <div class="input-group">
+            <input type="text" id="spareSearchInput" class="form-control" placeholder="Search by serial, model, person...">
           </div>
-
-          <div class="form-group">
-            <label class="form-label">Model <span class="required-star">*</span></label>
-            <select id="switchModelSelect" class="form-control">
-              <option value="">-- Select Model --</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Or type custom model <span id="switchCustomModelRequired" class="required-star hidden">*</span></label>
-            <input type="text" id="switchCustomModel" class="form-control" placeholder="Model not found? Type here...">
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Serial Number <span class="required-star">*</span></label>
-            <input type="text" id="switchSerialNumber" class="form-control input-scan" placeholder="Scan or type serial number...">
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Asset Tag</label>
-            <input type="text" id="switchAssetTag" class="form-control" placeholder="Optional asset tag">
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Assigned Person</label>
-            <input type="text" id="switchAssignedPerson" class="form-control"
-                   list="switchPeopleList" placeholder="Type or select a name..."
-                   autocomplete="off">
-            <datalist id="switchPeopleList"></datalist>
-          </div>
-
-          <div class="scan-panel-actions">
-            <button class="btn btn--primary btn--lg btn--full-width" id="saveSwitchBtn">Save Switch / Router</button>
-          </div>
-
-          <div id="switchSaveStatus" class="save-status"></div>
+        </div>
+        <div class="card-body table-wrap">
+          <table class="data-table" id="spareTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Model</th>
+                <th>Serial Number</th>
+                <th>Asset Tag</th>
+                <th>Position</th>
+                <th>Assigned Person</th>
+                <th>Notes</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+            <tbody id="spareTableBody">
+              <tr><td colspan="8" class="empty-state">Loading spare items...</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </section>
