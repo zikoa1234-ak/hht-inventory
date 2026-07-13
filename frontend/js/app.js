@@ -259,6 +259,28 @@ var App = {
       App._saveSpareItem();
     });
 
+    // Spare delete button (event delegation on table body)
+    document.getElementById('spareTableBody').addEventListener('click', function (e) {
+      var btn = e.target.closest('.spare-delete-btn');
+      if (!btn) return;
+      var id = btn.getAttribute('data-id');
+      var tr = btn.closest('tr');
+      var serial = tr ? tr.querySelector('.mono')?.textContent || '' : '';
+      AppHelpers.confirm('Delete Spare Item', 'Delete spare item with serial ' + serial + '? This cannot be undone.', async function () {
+        try {
+          var res = await fetch('/api/assets/' + id, { method: 'DELETE', headers: authHeaders() });
+          if (!res.ok) {
+            var errData = await res.json().catch(function () { return {}; });
+            throw new Error(errData.error || 'Delete failed (' + res.status + ')');
+          }
+          AppHelpers.toast('Spare item deleted', 'success');
+          App._loadSpareList();
+        } catch (err) {
+          AppHelpers.toast('Delete error: ' + err.message, 'error');
+        }
+      });
+    });
+
     // Show/hide custom model required indicator on spare form
     document.getElementById('spareModelSelect').addEventListener('change', function () {
       // Model is optional — no required indicator needed
@@ -946,7 +968,7 @@ var App = {
       this._renderSpareList(items);
     } catch (err) {
       this.log('Failed to load spare list:', err.message);
-      tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Error loading spare items: ' + esc(err.message) + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" class="empty-state">Error loading spare items: ' + esc(err.message) + '</td></tr>';
     }
   },
 
@@ -956,7 +978,7 @@ var App = {
     tbody.innerHTML = '';
 
     if (!items || items.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="9" class="empty-state">No spare items found. Register spare items from the form.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" class="empty-state">No spare items found. Register spare items from the form.</td></tr>';
       return;
     }
 
@@ -967,6 +989,11 @@ var App = {
       var statusLabel = item.item_status || 'IN USE';
       if (statusLabel === 'IN STOCK') statusClass = 'status-in-stock';
       else if (statusLabel === 'FAULTY') statusClass = 'status-faulty';
+      var deleteBtn = '';
+      var isAdmin = typeof AUTH !== 'undefined' && AUTH.isAdmin && AUTH.isAdmin();
+      if (isAdmin) {
+        deleteBtn = '<button class="btn btn--sm btn--danger spare-delete-btn" data-id="' + item.id + '" title="Delete this spare item">&times;</button>';
+      }
       tr.innerHTML =
         '<td>' + (idx + 1) + '</td>' +
         '<td>' + esc(modelName) + '</td>' +
@@ -976,7 +1003,8 @@ var App = {
         '<td>' + esc(item.assigned_person || '') + '</td>' +
         '<td><span class="item-status-badge ' + statusClass + '">' + esc(statusLabel) + '</span></td>' +
         '<td class="text-sm">' + esc((item.notes || '').substring(0, 40)) + '</td>' +
-        '<td class="text-secondary text-sm">' + (item.created_at ? new Date(item.created_at).toLocaleDateString() : '') + '</td>';
+        '<td class="text-secondary text-sm">' + (item.created_at ? new Date(item.created_at).toLocaleDateString() : '') + '</td>' +
+        '<td class="admin-only">' + deleteBtn + '</td>';
       tbody.appendChild(tr);
     });
   },
