@@ -83,7 +83,7 @@ router.get('/', async (req, res) => {
 
     const { rows } = await db.query(`
       SELECT pc.id, pc.location, pc.area, pc.asset_name, pc.box,
-             pc.serial_number, pc.assigned_person, pc.asset_status,
+             pc.serial_number, pc.asset_tag, pc.assigned_person, pc.asset_status,
              pc.notes, pc.created_at, pc.updated_at,
              pc.component_name, pc.item_category, pc.model_id, pc.custom_model,
              m.name AS model_name

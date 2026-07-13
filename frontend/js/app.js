@@ -930,7 +930,15 @@ var App = {
       if (search) params.set('search', search);
 
       var res = await fetch('/api/assets?' + params.toString(), { headers: authHeaders() });
+      if (!res.ok) {
+        var errData = await res.json().catch(function () { return {}; });
+        throw new Error(errData.error || 'Request failed (' + res.status + ')');
+      }
       var items = await res.json();
+      if (!Array.isArray(items)) {
+        this.log('Unexpected response type:', typeof items);
+        throw new Error('Invalid response from server');
+      }
       this._spareCache = items;
       this._renderSpareList(items);
     } catch (err) {
