@@ -11,7 +11,7 @@
 
     <!-- ====== TOP NAV ====== -->
     <nav id="topNav" class="top-nav">
-      <button class="nav-btn" data-screen="dashboard" title="Dashboard">&#9632;</button>
+      <button class="nav-btn" data-screen="selection" title="Home">&#9632;</button>
       <span class="nav-title">HHT Inventory</span>
       <div class="nav-right">
         <span id="userBadge" class="user-badge" style="display:none"></span>
@@ -22,8 +22,144 @@
       </div>
     </nav>
 
+    <!-- ====== MAIN SELECTION (3 Cards) ====== -->
+    <section id="screen-selection" class="screen active">
+      <div class="selection-header">
+        <h2>HHT Inventory</h2>
+        <p class="text-secondary text-sm">Select task type</p>
+      </div>
+
+      <div class="selection-grid">
+        <!-- Spare Card -->
+        <div class="selection-card" id="selectSpareCard">
+          <div class="selection-card-icon">&#128230;</div>
+          <div class="selection-card-title">Spare</div>
+          <div class="selection-card-subtitle">Register spare parts &amp; loose items</div>
+        </div>
+
+        <!-- Position Card -->
+        <div class="selection-card" id="selectPositionCard">
+          <div class="selection-card-icon">&#9879;</div>
+          <div class="selection-card-title">Position</div>
+          <div class="selection-card-subtitle">Site &amp; position based asset tracking</div>
+        </div>
+
+        <!-- Switch / Routers Card -->
+        <div class="selection-card" id="selectSwitchCard">
+          <div class="selection-card-icon">&#128252;</div>
+          <div class="selection-card-title">Switch / Routers</div>
+          <div class="selection-card-subtitle">Register network equipment</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====== SPARE ENTRY FORM ====== -->
+    <section id="screen-spare-entry" class="screen">
+      <div class="screen-back-header">
+        <button class="btn btn--outline btn--sm" id="spareBackBtn">&larr; Back</button>
+        <h2>Register Spare Item</h2>
+      </div>
+
+      <div class="card mt-8">
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label">Model <span class="required-star">*</span></label>
+            <select id="spareModelSelect" class="form-control">
+              <option value="">-- Select Model --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Or type custom model <span id="spareCustomModelRequired" class="required-star hidden">*</span></label>
+            <input type="text" id="spareCustomModel" class="form-control" placeholder="Model not found? Type here...">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Serial Number <span class="required-star">*</span></label>
+            <input type="text" id="spareSerialNumber" class="form-control input-scan" placeholder="Scan or type serial number...">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Asset Tag</label>
+            <input type="text" id="spareAssetTag" class="form-control" placeholder="Optional asset tag">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Assigned Person</label>
+            <input type="text" id="spareAssignedPerson" class="form-control"
+                   list="sparePeopleList" placeholder="Type or select a name..."
+                   autocomplete="off">
+            <datalist id="sparePeopleList"></datalist>
+          </div>
+
+          <div class="scan-panel-actions">
+            <button class="btn btn--primary btn--lg btn--full-width" id="saveSpareBtn">Save Spare Item</button>
+          </div>
+
+          <div id="spareSaveStatus" class="save-status"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====== SWITCH / ROUTER ENTRY FORM ====== -->
+    <section id="screen-switch-entry" class="screen">
+      <div class="screen-back-header">
+        <button class="btn btn--outline btn--sm" id="switchBackBtn">&larr; Back</button>
+        <h2>Register Switch / Router</h2>
+      </div>
+
+      <div class="card mt-8">
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label">Category / Type</label>
+            <select id="switchTypeSelect" class="form-control">
+              <option value="switch_router">Switch / Router</option>
+              <option value="switch">Switch</option>
+              <option value="router">Router</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Model <span class="required-star">*</span></label>
+            <select id="switchModelSelect" class="form-control">
+              <option value="">-- Select Model --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Or type custom model <span id="switchCustomModelRequired" class="required-star hidden">*</span></label>
+            <input type="text" id="switchCustomModel" class="form-control" placeholder="Model not found? Type here...">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Serial Number <span class="required-star">*</span></label>
+            <input type="text" id="switchSerialNumber" class="form-control input-scan" placeholder="Scan or type serial number...">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Asset Tag</label>
+            <input type="text" id="switchAssetTag" class="form-control" placeholder="Optional asset tag">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Assigned Person</label>
+            <input type="text" id="switchAssignedPerson" class="form-control"
+                   list="switchPeopleList" placeholder="Type or select a name..."
+                   autocomplete="off">
+            <datalist id="switchPeopleList"></datalist>
+          </div>
+
+          <div class="scan-panel-actions">
+            <button class="btn btn--primary btn--lg btn--full-width" id="saveSwitchBtn">Save Switch / Router</button>
+          </div>
+
+          <div id="switchSaveStatus" class="save-status"></div>
+        </div>
+      </div>
+    </section>
+
     <!-- ====== DASHBOARD ====== -->
-    <section id="screen-dashboard" class="screen active">
+    <section id="screen-dashboard" class="screen">
       <div class="dashboard-grid">
         <!-- Sites -->
         <div class="card">

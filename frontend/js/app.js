@@ -113,6 +113,8 @@ var App = {
         if (screen === 'templates') {
           AppHelpers.showScreen('templates');
           TemplatesScreen.render();
+        } else if (screen === 'selection') {
+          AppHelpers.showScreen('selection');
         } else if (screen === 'dashboard') {
           AppHelpers.showScreen('dashboard');
           App.refreshDashboard();
@@ -214,6 +216,74 @@ var App = {
       });
     }
 
+    // ===== NEW 3-CARD SELECTION =====
+    // Card click handlers
+    document.getElementById('selectSpareCard').addEventListener('click', function () {
+      AppHelpers.showScreen('spare-entry');
+      App._initSpareForm();
+    });
+    document.getElementById('selectPositionCard').addEventListener('click', function () {
+      AppHelpers.showScreen('dashboard');
+      App.refreshDashboard();
+    });
+    document.getElementById('selectSwitchCard').addEventListener('click', function () {
+      AppHelpers.showScreen('switch-entry');
+      App._initSwitchForm();
+    });
+
+    // Back buttons
+    document.getElementById('spareBackBtn').addEventListener('click', function () {
+      AppHelpers.showScreen('selection');
+    });
+    document.getElementById('switchBackBtn').addEventListener('click', function () {
+      AppHelpers.showScreen('selection');
+    });
+
+    // Spare form save
+    document.getElementById('saveSpareBtn').addEventListener('click', function () {
+      App._saveSpareItem();
+    });
+
+    // Switch form save
+    document.getElementById('saveSwitchBtn').addEventListener('click', function () {
+      App._saveSwitchItem();
+    });
+
+    // Show/hide custom model required indicator on spare form
+    document.getElementById('spareModelSelect').addEventListener('change', function () {
+      var requiredStar = document.getElementById('spareCustomModelRequired');
+      if (this.value === '') {
+        requiredStar.classList.remove('hidden');
+      } else {
+        requiredStar.classList.add('hidden');
+      }
+    });
+
+    // Show/hide custom model required indicator on switch form
+    document.getElementById('switchModelSelect').addEventListener('change', function () {
+      var requiredStar = document.getElementById('switchCustomModelRequired');
+      if (this.value === '') {
+        requiredStar.classList.remove('hidden');
+      } else {
+        requiredStar.classList.add('hidden');
+      }
+    });
+
+    // Serial number Enter key advances to asset tag on spare form
+    document.getElementById('spareSerialNumber').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        document.getElementById('spareAssetTag').focus();
+      }
+    });
+    // Serial number Enter key advances to asset tag on switch form
+    document.getElementById('switchSerialNumber').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        document.getElementById('switchAssetTag').focus();
+      }
+    });
+
     // ---- Load initial data (only if authenticated) ----
     if (!this._forceLogin) {
       await this.refreshDashboard();
@@ -259,10 +329,14 @@ var App = {
         initPeople().then(function () {
           if (typeof populatePeopleDatalist !== 'undefined') {
             populatePeopleDatalist('peopleList');
+            populatePeopleDatalist('sparePeopleList');
+            populatePeopleDatalist('switchPeopleList');
           }
         });
       }
-      await this.refreshDashboard();
+      // Show selection screen after login
+      AppHelpers.showScreen('selection');
+      App.log('Redirected to selection screen');
     } catch (err) {
       if (errorEl) { errorEl.textContent = err.message; errorEl.classList.remove('hidden'); }
     }
@@ -713,6 +787,168 @@ var App = {
       }
       window.open(api.getExportPositionCsvUrl(parseInt(id)));
       AppHelpers.toast('Downloading CSV...', 'success');
+    }
+  },
+
+  // ===== SPARE & SWITCH FORM METHODS =====
+
+  /** Load models into a select element */
+  _loadModelsIntoSelect: function (selectId) {
+    var sel = document.getElementById(selectId);
+    if (!sel) return;
+    sel.innerHTML = '<option value="">-- Select Model --</option>';
+    var models = AppState.models || [];
+    if (models.length === 0) {
+      AppState.loadModels().then(function (m) {
+        m.forEach(function (mod) {
+          var opt = document.createElement('option');
+          opt.value = mod.id;
+          opt.textContent = mod.name;
+          sel.appendChild(opt);
+        });
+      }).catch(function () {});
+    } else {
+      models.forEach(function (mod) {
+        var opt = document.createElement('option');
+        opt.value = mod.id;
+        opt.textContent = mod.name;
+        sel.appendChild(opt);
+      });
+    }
+  },
+
+  /** Initialize the spare entry form */
+  _initSpareForm: function () {
+    this._loadModelsIntoSelect('spareModelSelect');
+    document.getElementById('spareSerialNumber').value = '';
+    document.getElementById('spareAssetTag').value = '';
+    document.getElementById('spareCustomModel').value = '';
+    document.getElementById('spareAssignedPerson').value = '';
+    document.getElementById('spareSaveStatus').className = 'save-status';
+    document.getElementById('spareSaveStatus').textContent = '';
+    document.getElementById('spareSerialNumber').focus();
+  },
+
+  /** Initialize the switch/router entry form */
+  _initSwitchForm: function () {
+    this._loadModelsIntoSelect('switchModelSelect');
+    document.getElementById('switchSerialNumber').value = '';
+    document.getElementById('switchAssetTag').value = '';
+    document.getElementById('switchCustomModel').value = '';
+    document.getElementById('switchAssignedPerson').value = '';
+    document.getElementById('switchSaveStatus').className = 'save-status';
+    document.getElementById('switchSaveStatus').textContent = '';
+    document.getElementById('switchSerialNumber').focus();
+  },
+
+  /** Save a spare item */
+  _saveSpareItem: async function () {
+    var modelSelect = document.getElementById('spareModelSelect');
+    var customModel = document.getElementById('spareCustomModel').value.trim();
+    var serialNumber = document.getElementById('spareSerialNumber').value.trim();
+    var assetTag = document.getElementById('spareAssetTag').value.trim();
+    var assignedPerson = document.getElementById('spareAssignedPerson').value.trim();
+    var statusEl = document.getElementById('spareSaveStatus');
+
+    // Validation
+    if (!serialNumber) {
+      statusEl.className = 'save-status error';
+      statusEl.textContent = 'Serial number is required';
+      return;
+    }
+
+    var modelId = modelSelect.value || null;
+    if (!modelId && !customModel) {
+      statusEl.className = 'save-status error';
+      statusEl.textContent = 'Please select a model or type a custom model name';
+      return;
+    }
+
+    statusEl.className = 'save-status pending';
+    statusEl.textContent = 'Saving...';
+
+    try {
+      var data = {
+        serial_number: serialNumber,
+        model_id: modelId ? parseInt(modelId) : null,
+        custom_model: customModel || null,
+        asset_tag: assetTag || null,
+        assigned_person: assignedPerson || null,
+      };
+      await api.createSpareItem(data);
+      statusEl.className = 'save-status success';
+      statusEl.textContent = 'Spare item saved successfully!';
+      // Clear form for next entry
+      document.getElementById('spareSerialNumber').value = '';
+      document.getElementById('spareAssetTag').value = '';
+      document.getElementById('spareCustomModel').value = '';
+      document.getElementById('spareAssignedPerson').value = '';
+      modelSelect.value = '';
+      document.getElementById('spareCustomModelRequired').classList.remove('hidden');
+      document.getElementById('spareSerialNumber').focus();
+      setTimeout(function () {
+        statusEl.className = 'save-status';
+        statusEl.textContent = '';
+      }, 3000);
+    } catch (err) {
+      statusEl.className = 'save-status error';
+      statusEl.textContent = err.message;
+    }
+  },
+
+  /** Save a switch/router item */
+  _saveSwitchItem: async function () {
+    var modelSelect = document.getElementById('switchModelSelect');
+    var customModel = document.getElementById('switchCustomModel').value.trim();
+    var serialNumber = document.getElementById('switchSerialNumber').value.trim();
+    var assetTag = document.getElementById('switchAssetTag').value.trim();
+    var assignedPerson = document.getElementById('switchAssignedPerson').value.trim();
+    var switchType = document.getElementById('switchTypeSelect').value;
+    var statusEl = document.getElementById('switchSaveStatus');
+
+    // Validation
+    if (!serialNumber) {
+      statusEl.className = 'save-status error';
+      statusEl.textContent = 'Serial number is required';
+      return;
+    }
+
+    var modelId = modelSelect.value || null;
+    if (!modelId && !customModel) {
+      statusEl.className = 'save-status error';
+      statusEl.textContent = 'Please select a model or type a custom model name';
+      return;
+    }
+
+    statusEl.className = 'save-status pending';
+    statusEl.textContent = 'Saving...';
+
+    try {
+      var data = {
+        serial_number: serialNumber,
+        model_id: modelId ? parseInt(modelId) : null,
+        custom_model: customModel || null,
+        asset_tag: assetTag || null,
+        assigned_person: assignedPerson || null,
+      };
+      await api.createSwitchItem(data);
+      statusEl.className = 'save-status success';
+      statusEl.textContent = switchType.charAt(0).toUpperCase() + switchType.slice(1) + ' saved successfully!';
+      // Clear form for next entry
+      document.getElementById('switchSerialNumber').value = '';
+      document.getElementById('switchAssetTag').value = '';
+      document.getElementById('switchCustomModel').value = '';
+      document.getElementById('switchAssignedPerson').value = '';
+      modelSelect.value = '';
+      document.getElementById('switchCustomModelRequired').classList.remove('hidden');
+      document.getElementById('switchSerialNumber').focus();
+      setTimeout(function () {
+        statusEl.className = 'save-status';
+        statusEl.textContent = '';
+      }, 3000);
+    } catch (err) {
+      statusEl.className = 'save-status error';
+      statusEl.textContent = err.message;
     }
   },
 

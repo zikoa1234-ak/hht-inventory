@@ -7,6 +7,9 @@ const router = Router();
 // Allowed status values for the new asset workflow
 const ALLOWED_ASSET_STATUSES = ['Active', 'In Repair', 'In Stock', 'Retired'];
 
+// Allowed item categories
+const ALLOWED_ITEM_CATEGORIES = ['position', 'spare', 'switch_router'];
+
 // Helper: validate asset tag starts with XS (case-insensitive)
 function validateAssetTag(tag) {
   if (!tag || !tag.trim()) return null; // null/empty is ok
@@ -44,7 +47,7 @@ async function ensurePosition(location, area) {
 // GET /api/assets — list assets with filtering
 router.get('/', async (req, res) => {
   try {
-    const { location, area, search, assigned_person, asset_status } = req.query;
+    const { location, area, search, assigned_person, asset_status, item_category } = req.query;
 
     const conditions = [];
     const params = [];
@@ -71,6 +74,10 @@ router.get('/', async (req, res) => {
       conditions.push(`pc.asset_status = $${idx++}`);
       params.push(asset_status);
     }
+    if (item_category) {
+      conditions.push(`pc.item_category = $${idx++}`);
+      params.push(item_category);
+    }
 
     const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
 
@@ -78,8 +85,10 @@ router.get('/', async (req, res) => {
       SELECT pc.id, pc.location, pc.area, pc.asset_name, pc.box,
              pc.serial_number, pc.assigned_person, pc.asset_status,
              pc.notes, pc.created_at, pc.updated_at,
-             pc.component_name
+             pc.component_name, pc.item_category, pc.model_id, pc.custom_model,
+             m.name AS model_name
       FROM position_components pc
+      LEFT JOIN models m ON m.id = pc.model_id
       ${whereClause}
       ORDER BY pc.updated_at DESC NULLS LAST, pc.id DESC
     `, params);
@@ -139,16 +148,34 @@ router.get('/check-asset-tag', async (req, res) => {
   }
 });
 
-// POST /api/assets — create a new asset
+// POST /api/assets — create a new asset (handles all item categories)
 router.post('/', async (req, res) => {
   try {
-    const { location, area, position, box, asset_name, serial_number, asset_tag, assigned_person, asset_status, notes } = req.body;
+    const { location, area, position, box, asset_name, serial_number, asset_tag,
+            assigned_person, asset_status, notes, model_id, custom_model, item_category } = req.body;
 
-    // Validate required fields
-    if (!location || !area || !position || !asset_name || !serial_number) {
-      return res.status(400).json({
-        error: 'Required fields: location, area, position, asset_name, serial_number'
-      });
+    const category = item_category || 'position';
+
+    // Validate item_category
+    if (!ALLOWED_ITEM_CATEGORIES.includes(category)) {
+      return res.status(400).json({ error: 'item_category must be one of: ' + ALLOWED_ITEM_CATEGORIES.join(', ') });
+    }
+
+    // --- Category-specific validation ---
+    if (category === 'position') {
+      // Existing workflow: needs location, area, position, asset_name
+      if (!location || !area || !position || !asset_name || !serial_number) {
+        return res.status(400).json({
+          error: 'Required fields: location, area, position, asset_name, serial_number'
+        });
+      }
+    } else {
+      // spare / switch_router: serial_number is the primary required field
+      if (!serial_number) {
+        return res.status(400).json({
+          error: 'Serial number is required'
+        });
+      }
     }
 
     // Validate asset_status if provided
@@ -158,7 +185,7 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Duplicate serial check: global — any existing S/N blocks insert
+    // Duplicate serial check: global
     const dupCheck = await db.query(
       'SELECT id FROM position_components WHERE serial_number = $1 AND serial_number IS NOT NULL AND serial_number != \'\'',
       [serial_number]
@@ -178,39 +205,60 @@ router.post('/', async (req, res) => {
       }
     }
 
-    // Validate asset tag prefix (must start with XS)
-    const tagError = validateAssetTag(asset_tag);
-    if (tagError) {
-      return res.status(400).json({ error: tagError });
+    // Validate asset tag prefix (must start with XS) — only for position assets
+    if (category === 'position') {
+      const tagError = validateAssetTag(asset_tag);
+      if (tagError) {
+        return res.status(400).json({ error: tagError });
+      }
     }
 
-    // Get or create the catch-all position for FK
-    const positionId = await ensurePosition(location, area);
-    if (!positionId) {
-      return res.status(400).json({
-        error: 'Invalid location or area — no matching site or template found'
-      });
+    // Determine position_id and component_name based on category
+    let positionId = null;
+    let compName = '';
+
+    if (category === 'position') {
+      // Get or create the catch-all position for FK
+      positionId = await ensurePosition(location, area);
+      if (!positionId) {
+        return res.status(400).json({
+          error: 'Invalid location or area — no matching site or template found'
+        });
+      }
+      compName = position || 'Asset';
+    } else {
+      // spare / switch_router: use model name or category as component_name
+      compName = custom_model || 'Inventory Item';
     }
+
+    // Map model_id: use the provided ID or null
+    const resolvedModelId = model_id || null;
 
     const result = await db.query(`
       INSERT INTO position_components
         (position_id, component_name, location, area, asset_name, box,
-         serial_number, asset_tag, assigned_person, asset_status, notes, status, sort_order, item_status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'complete', 0, 'IN USE')
+         serial_number, asset_tag, assigned_person, asset_status, notes,
+         status, sort_order, item_status, item_category, model_id, custom_model)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+              'complete', 0, 'IN USE', $12, $13, $14)
       RETURNING id, location, area, asset_name, box, serial_number, asset_tag,
-                assigned_person, asset_status, notes, updated_at
+                assigned_person, asset_status, notes, updated_at, item_category,
+                model_id, custom_model
     `, [
       positionId,
-      position || 'Asset',
-      location,
-      area,
-      asset_name,
-      box || null,
+      compName,
+      category === 'position' ? location : null,
+      category === 'position' ? area : null,
+      category === 'position' ? asset_name : (custom_model || 'Inventory Item'),
+      category === 'position' ? (box || null) : null,
       serial_number,
       asset_tag || null,
       assigned_person || null,
       asset_status || 'Active',
-      notes || null
+      notes || null,
+      category,
+      resolvedModelId,
+      custom_model || null
     ]);
 
     res.status(201).json(result.rows[0]);

@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS models (
 -- Actual components installed at a position (latest state)
 CREATE TABLE IF NOT EXISTS position_components (
   id                  SERIAL PRIMARY KEY,
-  position_id         INTEGER      NOT NULL REFERENCES positions(id) ON DELETE CASCADE,
+  position_id         INTEGER      REFERENCES positions(id) ON DELETE CASCADE,
   component_name      VARCHAR(255) NOT NULL,
   model_id            INTEGER      REFERENCES models(id),
   custom_model        VARCHAR(255),
@@ -62,9 +62,10 @@ CREATE TABLE IF NOT EXISTS position_components (
   status              VARCHAR(50)  NOT NULL DEFAULT 'missing',
   is_extra_component  BOOLEAN      NOT NULL DEFAULT FALSE,
   sort_order          INTEGER      NOT NULL DEFAULT 0,
-  updated_at          TIMESTAMP    NOT NULL DEFAULT NOW(),
+  item_status         VARCHAR(50)  NOT NULL DEFAULT 'IN USE',
   assigned_person     VARCHAR(255),
   updated_by          VARCHAR(255),
+  item_category       VARCHAR(50)  NOT NULL DEFAULT 'position',
   UNIQUE(position_id, component_name)
 );
 
@@ -118,6 +119,7 @@ CREATE INDEX IF NOT EXISTS idx_positions_site_id               ON positions(site
 CREATE INDEX IF NOT EXISTS idx_position_components_position_id ON position_components(position_id);
 CREATE INDEX IF NOT EXISTS idx_scan_sessions_position_id       ON scan_sessions(position_id);
 CREATE INDEX IF NOT EXISTS idx_component_history_component_id  ON component_history(component_id);
+CREATE INDEX IF NOT EXISTS idx_position_components_item_category ON position_components(item_category);
 
 -- People assigned to sites (manual, not auth users)
 CREATE TABLE IF NOT EXISTS site_people (

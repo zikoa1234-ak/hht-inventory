@@ -362,3 +362,96 @@ textarea.form-control { font-family: var(--font-family); resize: vertical; }
 .btn--danger:hover {
   opacity: 0.9;
 }
+
+/* ===== Selection Screen (3 Cards) ===== */
+.selection-header {
+  text-align: center;
+  padding: 24px 0 8px;
+}
+.selection-header h2 {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.selection-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  padding: 16px 0;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.selection-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 20px;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  transition: all var(--duration);
+  min-height: 140px;
+  text-align: center;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.selection-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 6px 16px rgba(33,128,141,0.15);
+  transform: translateY(-2px);
+}
+.selection-card:active {
+  transform: translateY(0);
+  background: rgba(33,128,141,0.04);
+}
+
+.selection-card-icon {
+  font-size: 42px;
+  margin-bottom: 10px;
+  line-height: 1;
+}
+
+.selection-card-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: var(--text);
+}
+
+.selection-card-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* ===== Form Save Status (reuse existing) ===== */
+.save-status.success {
+  background: rgba(33,128,141,0.1);
+  color: var(--success);
+}
+.save-status.error {
+  background: rgba(192,21,47,0.1);
+  color: var(--error);
+}
+.save-status.pending {
+  background: rgba(168,75,47,0.1);
+  color: var(--warning);
+}
+
+/* Responsive: bigger touch targets for HHT */
+@media (max-width: 640px) {
+  .selection-card {
+    min-height: 120px;
+    padding: 24px 16px;
+  }
+  .selection-card-icon {
+    font-size: 36px;
+  }
+  .selection-card-title {
+    font-size: 17px;
+  }
+}
