@@ -826,6 +826,7 @@ var App = {
     document.getElementById('spareAssignedPerson').value = '';
     document.getElementById('spareNotes').value = '';
     document.getElementById('sparePositionSelect').value = '';
+    document.getElementById('spareItemStatus').value = 'IN USE';
     document.getElementById('spareSaveStatus').className = 'save-status';
     document.getElementById('spareSaveStatus').textContent = '';
     document.getElementById('spareAssetTagError').classList.add('hidden');
@@ -889,6 +890,7 @@ var App = {
         assigned_person: assignedPerson || null,
         position: position || null,
         notes: notes || null,
+        item_status: document.getElementById('spareItemStatus').value,
       };
       await api.createSpareItem(data);
       statusEl.className = 'save-status success';
@@ -900,6 +902,7 @@ var App = {
       document.getElementById('spareAssignedPerson').value = '';
       document.getElementById('spareNotes').value = '';
       document.getElementById('sparePositionSelect').value = '';
+      document.getElementById('spareItemStatus').value = 'IN USE';
       tagErrorEl.classList.add('hidden');
       modelSelect.value = '';
       document.getElementById('spareSerialNumber').focus();
@@ -943,7 +946,7 @@ var App = {
       this._renderSpareList(items);
     } catch (err) {
       this.log('Failed to load spare list:', err.message);
-      tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Error loading spare items: ' + esc(err.message) + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Error loading spare items: ' + esc(err.message) + '</td></tr>';
     }
   },
 
@@ -953,13 +956,17 @@ var App = {
     tbody.innerHTML = '';
 
     if (!items || items.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No spare items found. Register spare items from the form.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" class="empty-state">No spare items found. Register spare items from the form.</td></tr>';
       return;
     }
 
     items.forEach(function (item, idx) {
       var tr = document.createElement('tr');
       var modelName = item.custom_model || item.model_name || '';
+      var statusClass = 'status-in-use';
+      var statusLabel = item.item_status || 'IN USE';
+      if (statusLabel === 'IN STOCK') statusClass = 'status-in-stock';
+      else if (statusLabel === 'FAULTY') statusClass = 'status-faulty';
       tr.innerHTML =
         '<td>' + (idx + 1) + '</td>' +
         '<td>' + esc(modelName) + '</td>' +
@@ -967,6 +974,7 @@ var App = {
         '<td class="mono">' + esc(item.asset_tag || '') + '</td>' +
         '<td>' + esc(item.component_name || '') + '</td>' +
         '<td>' + esc(item.assigned_person || '') + '</td>' +
+        '<td><span class="item-status-badge ' + statusClass + '">' + esc(statusLabel) + '</span></td>' +
         '<td class="text-sm">' + esc((item.notes || '').substring(0, 40)) + '</td>' +
         '<td class="text-secondary text-sm">' + (item.created_at ? new Date(item.created_at).toLocaleDateString() : '') + '</td>';
       tbody.appendChild(tr);
@@ -981,7 +989,7 @@ var App = {
     }
 
     // Build CSV
-    var headers = ['serialNumber', 'model', 'customModel', 'assetTag', 'position', 'assignedPerson', 'notes', 'createdAt'];
+    var headers = ['serialNumber', 'model', 'customModel', 'assetTag', 'position', 'assignedPerson', 'itemStatus', 'notes', 'createdAt'];
     var csvRows = items.map(function (item) {
       return [
         csvField(item.serial_number || ''),
@@ -990,6 +998,7 @@ var App = {
         csvField(item.asset_tag || ''),
         csvField(item.component_name || ''),
         csvField(item.assigned_person || ''),
+        csvField(item.item_status || 'IN USE'),
         csvField(item.notes || ''),
         csvField(item.created_at || ''),
       ].join(',');

@@ -84,7 +84,7 @@ router.get('/', async (req, res) => {
     const { rows } = await db.query(`
       SELECT pc.id, pc.location, pc.area, pc.asset_name, pc.box,
              pc.serial_number, pc.asset_tag, pc.assigned_person, pc.asset_status,
-             pc.notes, pc.created_at, pc.updated_at,
+             pc.item_status, pc.notes, pc.created_at, pc.updated_at,
              pc.component_name, pc.item_category, pc.model_id, pc.custom_model,
              m.name AS model_name
       FROM position_components pc
@@ -152,7 +152,7 @@ router.get('/check-asset-tag', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { location, area, position, box, asset_name, serial_number, asset_tag,
-            assigned_person, asset_status, notes, model_id, custom_model, item_category } = req.body;
+            assigned_person, asset_status, notes, model_id, custom_model, item_category, item_status } = req.body;
 
     const category = item_category || 'position';
 
@@ -240,7 +240,7 @@ router.post('/', async (req, res) => {
          serial_number, asset_tag, assigned_person, asset_status, notes,
          status, sort_order, item_status, item_category, model_id, custom_model)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
-              'complete', 0, 'IN USE', $12, $13, $14)
+              'complete', 0, $15, $12, $13, $14)
       RETURNING id, location, area, asset_name, box, serial_number, asset_tag,
                 assigned_person, asset_status, notes, updated_at, item_category,
                 model_id, custom_model
@@ -258,7 +258,8 @@ router.post('/', async (req, res) => {
       notes || null,
       category,
       resolvedModelId,
-      custom_model || null
+      custom_model || null,
+      item_status || 'IN USE'
     ]);
 
     res.status(201).json(result.rows[0]);

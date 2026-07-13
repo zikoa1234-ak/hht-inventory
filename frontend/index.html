@@ -100,6 +100,15 @@
           </div>
 
           <div class="form-group">
+            <label class="form-label">Item Status</label>
+            <select id="spareItemStatus" class="form-control">
+              <option value="IN USE">IN USE</option>
+              <option value="IN STOCK">IN STOCK</option>
+              <option value="FAULTY">FAULTY</option>
+            </select>
+          </div>
+
+          <div class="form-group">
             <label class="form-label">Notes / Comments</label>
             <textarea id="spareNotes" class="form-control" rows="2" placeholder="Add any notes or comments..."></textarea>
           </div>
@@ -140,12 +149,13 @@
                 <th>Asset Tag</th>
                 <th>Position</th>
                 <th>Assigned Person</th>
+                <th>Status</th>
                 <th>Notes</th>
                 <th>Created</th>
               </tr>
             </thead>
             <tbody id="spareTableBody">
-              <tr><td colspan="8" class="empty-state">Loading spare items...</td></tr>
+              <tr><td colspan="9" class="empty-state">Loading spare items...</td></tr>
             </tbody>
           </table>
         </div>
